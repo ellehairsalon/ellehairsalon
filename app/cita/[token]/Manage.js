@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
+import { WHATSAPP } from '@/lib/config';
 
 const days = Array.from({ length: 14 }, (_, i) =>
   new Date(Date.now() - 5 * 3600000 + i * 86400000).toISOString().slice(0, 10));
@@ -70,7 +71,7 @@ export default function Manage({ token }) {
             <button className="ghost" disabled={!d.canChange} onClick={() => setMode('change')}>Cambiar</button>
             <button className="ghost" onClick={() => setMode('cancel')}>Cancelar cita</button>
           </div>
-          {!d.canChange && <p className="note">Para cambios con menos de {d.hours} horas, escríbenos por WhatsApp.</p>}
+          {!d.canChange && <p className="note">Para cambios con menos de {d.hours} horas, <a href={`https://wa.me/${WHATSAPP}`}>escríbenos por WhatsApp</a>.</p>}
         </>
       )}
 
