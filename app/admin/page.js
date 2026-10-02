@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { db } from '@/lib/slots';
 import { isAdmin } from '@/lib/admin';
 import DayView from './DayView';
+import NewAppt from './NewAppt';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,6 +36,7 @@ export default async function Admin({ searchParams }) {
       <h1 className="cap">{label}</h1>
       {bdays?.length > 0 && <p className="bday">🎂 Cumpleaños: {bdays.map((b) => b.full_name).join(', ')}</p>}
       <DayView appts={data || []} isToday={date === today()} />
+      <NewAppt />
     </main>
   );
 }

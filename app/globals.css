@@ -58,3 +58,11 @@ button:focus-visible,input:focus-visible,a:focus-visible { outline:2px solid var
 select { padding:11px; border:1px solid var(--line); background:#fff; font:inherit; color:var(--ink); }
 a.row, a.ghost { text-decoration:none; color:inherit; }
 a.ghost { display:inline-block; }
+.fab { position:fixed; right:20px; bottom:92px; width:56px; height:56px; border-radius:50%; border:0; background:var(--berry);
+  color:#fff; font-size:2rem; line-height:1; box-shadow:0 6px 18px rgba(142,27,74,.35); cursor:pointer; z-index:22; }
+.svc { padding:12px 0; border-bottom:1px solid var(--line); }
+.svc-f { display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; }
+.svc-f label { flex:1; min-width:90px; margin:6px 0 0; }
+.chk { display:flex; align-items:center; }
+.chk input { display:inline; width:auto; margin:0 6px 0 0; }
+.sheet select { width:100%; margin-top:8px; }
