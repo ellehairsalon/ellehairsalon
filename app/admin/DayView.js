@@ -33,6 +33,7 @@ export default function DayView({ appts, isToday }) {
     if (await call(a.id, action)) { setSel(null); setUndo(a.id); setTimeout(() => setUndo(null), 8000); }
   }
 
+  async function quick(a, action) { if (await call(a.id, action)) setSel(null); }
   const hours = Array.from({ length: END - START }, (_, i) => START + i);
   const first = (n) => n.split(' ')[0];
 
@@ -44,7 +45,7 @@ export default function DayView({ appts, isToday }) {
         {appts.map((a) => {
           const s = min(a.starts_at), e = min(a.ends_at);
           return (
-            <button key={a.id} className={'blk' + (a.status !== 'confirmed' ? ' done' : '')}
+            <button key={a.id} className={'blk' + (a.status !== 'confirmed' ? ' done' : '') + (a.started_at && a.status === 'confirmed' ? ' live' : '') + (a.checked_in_at && !a.started_at ? ' here' : '')}
               style={{ top: ((s - START * 60) * PX) / 60, height: Math.max(((e - s) * PX) / 60 - 2, 30), background: colorOf(a.services.service_categories?.name) }}
               onClick={() => { setSel(a); setNote(a.notes || ''); }}>
               <b>{a.clients.full_name}</b><span>{a.services.name} · {hm(a.starts_at)}</span>
@@ -81,6 +82,8 @@ export default function DayView({ appts, isToday }) {
             </div>
             {sel.status === 'confirmed' && (
               <div className="actions">
+                {!sel.started_at && !sel.checked_in_at && <button className="ghost" disabled={busy} onClick={() => quick(sel, 'checkin')}>Llegó</button>}
+                {!sel.started_at && <button className="ghost" disabled={busy} onClick={() => quick(sel, 'start')}>Empezar</button>}
                 <button className="cta" disabled={busy} onClick={() => act(sel, 'complete')}>Terminó</button>
                 <button className="ghost" disabled={busy} onClick={() => act(sel, 'no_show')}>No vino</button>
                 <button className="ghost" disabled={busy} onClick={() => act(sel, 'cancel')}>Cancelar</button>

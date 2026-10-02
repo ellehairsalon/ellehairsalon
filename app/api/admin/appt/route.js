@@ -14,6 +14,8 @@ export async function POST(req) {
       cancel: { status: 'cancelled', cancelled_at: new Date().toISOString() },
       complete: { status: 'completed' },
       no_show: { status: 'no_show' },
+      checkin: { checked_in_at: new Date().toISOString() },
+      start: { started_at: new Date().toISOString() },
     }[action];
     if (!patch) return Response.json({ error: 'Datos inválidos' }, { status: 400 });
     q = q.update(patch).eq('id', id).eq('status', 'confirmed');

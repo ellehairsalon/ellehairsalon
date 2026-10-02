@@ -26,6 +26,7 @@ export async function POST(req) {
   const { error } = await db.from('appointments').insert({
     client_id: client.id, stylist_id: slot.stylist_id, service_id, starts_at, ends_at,
     price: svc.price, early_fee: slot.fee, source: walk_in ? 'walk_in' : 'manual',
+    checked_in_at: walk_in ? new Date().toISOString() : null,
   });
   if (error) return bad('No se pudo guardar. Si la clienta ya tiene otra cita pendiente, márcala como terminada o cancélala primero.', 409);
   return Response.json({ ok: true });

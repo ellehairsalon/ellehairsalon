@@ -11,6 +11,7 @@ export default async function Settings() {
   return (
     <main className="wide">
       <h1>Ajustes</h1>
+      <p><a href="/pantalla" target="_blank">Abrir pantalla en vivo del salón</a></p>
       <Closures />
       <ScheduleEditor />
       <ServicesEditor />
