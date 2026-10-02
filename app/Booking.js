@@ -6,7 +6,6 @@ const days = Array.from({ length: 14 }, (_, i) =>
 const dayLabel = (d) => new Date(d + 'T12:00:00Z')
   .toLocaleDateString('es-EC', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
 const dur = (m) => (m >= 60 ? `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ''}` : `${m} min`);
-const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 
 export default function Booking({ categories }) {
   const [svc, setSvc] = useState(null);
@@ -31,10 +30,7 @@ export default function Booking({ categories }) {
     setBusy(true); setError('');
     const r = await fetch('/api/book', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        service_id: svc.id, starts_at: slot.starts_at, name, phone,
-        birthday_month: bm || null, birthday_day: bd || null,
-      }),
+      body: JSON.stringify({ service_id: svc.id, starts_at: slot.starts_at, name, phone, birthday_month: bm || null, birthday_day: bd || null }),
     });
     const j = await r.json();
     setBusy(false);
@@ -99,14 +95,8 @@ export default function Booking({ categories }) {
           <label>WhatsApp<input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" placeholder="09XXXXXXXX" autoComplete="tel" /></label>
           <label>Cumpleaños (opcional, solo día y mes)
             <div className="grid">
-              <select value={bd} onChange={(e) => setBd(e.target.value)}>
-                <option value="">Día</option>
-                {Array.from({ length: 31 }, (_, i) => <option key={i} value={i + 1}>{i + 1}</option>)}
-              </select>
-              <select value={bm} onChange={(e) => setBm(e.target.value)}>
-                <option value="">Mes</option>
-                {MESES.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
-              </select>
+              <select value={bd} onChange={(e) => setBd(e.target.value)}><option value="">Día</option>{Array.from({ length: 31 }, (_, i) => <option key={i} value={i + 1}>{i + 1}</option>)}</select>
+              <select value={bm} onChange={(e) => setBm(e.target.value)}><option value="">Mes</option>{['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'].map((m, i) => <option key={m} value={i + 1}>{m}</option>)}</select>
             </div>
           </label>
           {error && <p className="error">{error}</p>}

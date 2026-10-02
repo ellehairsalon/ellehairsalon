@@ -35,18 +35,24 @@ button:focus-visible,input:focus-visible,a:focus-visible { outline:2px solid var
 .hr { position:absolute; left:0; right:0; border-top:1px solid var(--line); }
 .hr span { position:absolute; left:-44px; top:-9px; font-size:.75rem; color:var(--muted); }
 .now { position:absolute; left:-6px; right:0; border-top:2px solid var(--berry); z-index:2; pointer-events:none; }
-.blk { position:absolute; left:4px; right:0; display:flex; flex-direction:column; align-items:flex-start; padding:6px 10px; border:0; border-radius:10px; font:inherit; font-size:.85rem; text-align:left; color:var(--ink); cursor:pointer; overflow:hidden; box-shadow:0 1px 2px rgba(36,26,43,.12); }
+.blk { position:absolute; left:4px; right:0; display:flex; flex-direction:column; align-items:flex-start; padding:6px 10px;
+  border:0; border-radius:10px; font:inherit; font-size:.85rem; text-align:left; color:var(--ink); cursor:pointer;
+  overflow:hidden; box-shadow:0 1px 2px rgba(36,26,43,.12); }
 .blk b { font-weight:600; }
 .blk.done { opacity:.55; }
-.tabbar { position:fixed; left:0; right:0; bottom:0; display:flex; justify-content:center; gap:32px; padding:8px 0 calc(8px + env(safe-area-inset-bottom)); background:rgba(248,246,249,.82); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); border-top:1px solid var(--line); z-index:20; }
+.tabbar { position:fixed; left:0; right:0; bottom:0; display:flex; justify-content:center; gap:32px;
+  padding:8px 0 calc(8px + env(safe-area-inset-bottom)); background:rgba(248,246,249,.82);
+  backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); border-top:1px solid var(--line); z-index:20; }
 .tabbar a { display:flex; flex-direction:column; align-items:center; gap:2px; min-width:72px; font-size:.75rem; color:var(--muted); text-decoration:none; }
 .tabbar a span { font-size:1.4rem; }
 .tabbar a.on { color:var(--berry); font-weight:600; }
 .scrim { position:fixed; inset:0; background:rgba(36,26,43,.35); z-index:30; display:flex; align-items:flex-end; justify-content:center; }
-.sheet { width:100%; max-width:560px; background:var(--bg); border-radius:20px 20px 0 0; padding:20px 20px calc(24px + env(safe-area-inset-bottom)); max-height:85vh; overflow:auto; }
+.sheet { width:100%; max-width:560px; background:var(--bg); border-radius:20px 20px 0 0;
+  padding:20px 20px calc(24px + env(safe-area-inset-bottom)); max-height:85vh; overflow:auto; }
 .sheet h2 { margin:0 0 6px; }
 .sheet textarea { width:100%; margin-top:12px; padding:10px; border:1px solid var(--line); background:#fff; font:inherit; color:var(--ink); }
-.snack { position:fixed; left:50%; transform:translateX(-50%); bottom:84px; background:var(--ink); color:#fff; padding:10px 16px; border-radius:999px; z-index:25; }
+.snack { position:fixed; left:50%; transform:translateX(-50%); bottom:84px; background:var(--ink); color:#fff;
+  padding:10px 16px; border-radius:999px; z-index:25; }
 .snack button { margin-left:12px; background:none; border:0; color:#f5b3cf; font:inherit; font-weight:600; cursor:pointer; }
 .actions { flex-wrap:wrap; }
 select { padding:11px; border:1px solid var(--line); background:#fff; font:inherit; color:var(--ink); }
