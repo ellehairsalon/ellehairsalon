@@ -10,7 +10,7 @@ const normPhone = (raw) => {
 const err = (error, status) => Response.json({ error }, { status });
 
 export async function POST(req) {
-  const { service_id, starts_at, name, phone } = await req.json();
+  const { service_id, starts_at, name, phone, birthday_month, birthday_day } = await req.json();
   const p = normPhone(phone), n = String(name || '').trim();
   if (!p || n.length < 2 || !/^\d{4}-\d{2}-\d{2}T/.test(starts_at || ''))
     return err('Revisa tu nombre y tu número de WhatsApp.', 400);
@@ -22,6 +22,10 @@ export async function POST(req) {
 
   let { data: client } = await db.from('clients').select('*').eq('phone', p).maybeSingle();
   if (!client) ({ data: client } = await db.from('clients').insert({ phone: p, full_name: n }).select().single());
+
+  const bm = +birthday_month, bd = +birthday_day;
+  if (bm >= 1 && bm <= 12 && bd >= 1 && bd <= 31 && !client.birthday_month)
+    await db.from('clients').update({ birthday_month: bm, birthday_day: bd }).eq('id', client.id);
 
   const { data: active } = await db.from('appointments').select('id')
     .eq('client_id', client.id).eq('status', 'confirmed').maybeSingle();
