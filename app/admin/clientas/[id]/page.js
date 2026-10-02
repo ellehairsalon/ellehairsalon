@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { db } from '@/lib/slots';
 import { isAdmin } from '@/lib/admin';
+import BirthdayForm from '../BirthdayForm';
 
 export const dynamic = 'force-dynamic';
 const MES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
@@ -27,6 +28,7 @@ export default async function Client({ params }) {
       <p><a href={`https://wa.me/${c.phone.replace(/\D/g, '')}`}>{c.phone}</a>
         {c.birthday_month && ` · 🎂 ${c.birthday_day} de ${MES[c.birthday_month - 1]}`}</p>
       <p className="note">{done.length} {done.length === 1 ? 'visita completada' : 'visitas completadas'} · ${total.toFixed(2)} en total</p>
+      <BirthdayForm id={c.id} month={c.birthday_month} day={c.birthday_day} />
       <h2>Historial</h2>
       {(visits || []).map((v) => (
         <div className="appt" key={v.id}>
