@@ -9,6 +9,7 @@ const dayLabel = (d) => new Date(d + 'T12:00:00Z')
 const fmt = (iso) => new Date(iso).toLocaleString('es-EC', {
   weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'America/Guayaquil',
 });
+const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 
 export default function Manage({ token }) {
   const [d, setD] = useState(null);
@@ -19,6 +20,9 @@ export default function Manage({ token }) {
   const [slot, setSlot] = useState(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
+  const [pf, setPf] = useState({ email: '', day: '', month: '' });
+  const [pfMsg, setPfMsg] = useState('');
+  const [pfDone, setPfDone] = useState(false);
 
   const load = useCallback(async (dt) => {
     const r = await fetch(`/api/cita/${token}${dt ? `?date=${dt}` : ''}`);
@@ -35,16 +39,26 @@ export default function Manage({ token }) {
     load(date).then((j) => j && setSlots(j.slots));
   }, [mode, date, load]);
 
-  async function act(body) {
-    setBusy(true); setMsg('');
+  async function post(body) {
     const r = await fetch(`/api/cita/${token}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
     });
-    const j = await r.json();
+    return { ok: r.ok, ...(await r.json()) };
+  }
+  async function act(body) {
+    setBusy(true); setMsg('');
+    const j = await post(body);
     setBusy(false);
-    if (!r.ok) { setMsg(j.error); return; }
+    if (!j.ok) { setMsg(j.error); return; }
     setMode('view');
     await load();
+  }
+  async function saveProfile() {
+    setBusy(true); setPfMsg('');
+    const j = await post({ action: 'profile', email: pf.email, birthday_month: pf.month, birthday_day: pf.day });
+    setBusy(false);
+    if (!j.ok) { setPfMsg(j.error); return; }
+    setPfDone(true);
   }
 
   if (err) return <p className="error">{err}</p>;
@@ -72,6 +86,31 @@ export default function Manage({ token }) {
             <button className="ghost" onClick={() => setMode('cancel')}>Cancelar cita</button>
           </div>
           {!d.canChange && <p className="note">Para cambios con menos de {d.hours} horas, <a href={`https://wa.me/${WHATSAPP}`}>escríbenos por WhatsApp</a>.</p>}
+
+          {d.profile?.needs && !pfDone && (
+            <div className="bday" style={{ marginTop: 28 }}>
+              <strong>Completa tu perfil</strong> <span className="note">(opcional, solo esta vez)</span>
+              <label>Tu cumpleaños
+                <div className="grid">
+                  <select value={pf.day} onChange={(e) => setPf({ ...pf, day: e.target.value })}>
+                    <option value="">Día</option>
+                    {Array.from({ length: 31 }, (_, i) => <option key={i} value={i + 1}>{i + 1}</option>)}
+                  </select>
+                  <select value={pf.month} onChange={(e) => setPf({ ...pf, month: e.target.value })}>
+                    <option value="">Mes</option>
+                    {MESES.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+                  </select>
+                </div>
+              </label>
+              <label>Tu correo
+                <input type="email" value={pf.email} onChange={(e) => setPf({ ...pf, email: e.target.value })} autoComplete="email" />
+              </label>
+              {pfMsg && <p className="error">{pfMsg}</p>}
+              <button className="ghost" disabled={busy || (!pf.email && !pf.day && !pf.month)} onClick={saveProfile}>Guardar</button>
+              <p className="note">Solo el salón puede ver estos datos.</p>
+            </div>
+          )}
+          {pfDone && <p className="note" style={{ marginTop: 28 }}>Gracias, guardamos tus datos ✓</p>}
         </>
       )}
 

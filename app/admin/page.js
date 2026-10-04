@@ -18,7 +18,7 @@ export default async function Admin({ searchParams }) {
 
   const [{ data }, { data: bdays }] = await Promise.all([
     db.from('appointments')
-      .select('id,client_id,starts_at,ends_at,status,price,early_fee,notes,checked_in_at,started_at,services(name,service_categories(name)),stylists(name),clients(full_name,phone)')
+      .select('id,client_id,starts_at,ends_at,status,price,early_fee,notes,checked_in_at,started_at,services(name,service_categories(name)),stylists(name),clients(full_name,phone,internal_notes)')
       .gte('starts_at', `${date}T00:00:00${TZ}`).lte('starts_at', `${date}T23:59:59${TZ}`)
       .neq('status', 'cancelled').order('starts_at'),
     db.from('clients').select('id,full_name').eq('birthday_month', m).eq('birthday_day', d),

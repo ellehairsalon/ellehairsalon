@@ -1,6 +1,7 @@
 import { db, getSlots } from '@/lib/slots';
+import { validEmail, validBirthday } from '@/lib/validate';
 
-const SEL = 'id,service_id,starts_at,ends_at,price,early_fee,status,services(name,duration_min),clients(full_name)';
+const SEL = 'id,client_id,service_id,starts_at,ends_at,price,early_fee,status,services(name,duration_min),clients(full_name,email,birthday_month,birthday_day)';
 const bad = (error, status) => Response.json({ error }, { status });
 const hoursLeft = (a) => (+new Date(a.starts_at) - Date.now()) / 3600000;
 const minHours = async () =>
@@ -27,6 +28,7 @@ export async function GET(req, { params }) {
   return Response.json({
     appt: { service: a.services.name, starts_at: a.starts_at, price: a.price, early_fee: a.early_fee, status: a.status },
     canChange, hours, slots,
+    profile: { needs: !a.clients?.email || !a.clients?.birthday_month }, // ¿falta completar el perfil?
   });
 }
 
@@ -34,9 +36,29 @@ export async function POST(req, { params }) {
   const { token } = await params;
   const a = await load(token);
   if (!a) return bad('No encontramos esta cita.', 404);
+  const body = await req.json();
+  const { action, starts_at } = body;
+
+  // Perfil opcional: correo y cumpleaños. Solo quien tiene el enlace privado de la cita puede enviarlo.
+  if (action === 'profile') {
+    const patch = {};
+    const email = String(body.email || '').trim().toLowerCase();
+    if (email) {
+      if (!validEmail(email)) return bad('Revisa tu correo.', 400);
+      patch.email = email;
+    }
+    if (body.birthday_month || body.birthday_day) {
+      const m = +body.birthday_month, d = +body.birthday_day;
+      if (!validBirthday(m, d)) return bad('Revisa el día y el mes de tu cumpleaños.', 400);
+      patch.birthday_month = m; patch.birthday_day = d;
+    }
+    if (!Object.keys(patch).length) return bad('Escribe tu correo o tu cumpleaños.', 400);
+    const { error } = await db.from('clients').update(patch).eq('id', a.client_id);
+    return error ? bad('No se pudo guardar.', 500) : Response.json({ ok: true });
+  }
+
   if (a.status !== 'confirmed' || hoursLeft(a) <= 0) return bad('Esta cita ya no se puede modificar.', 409);
   const hours = await minHours();
-  const { action, starts_at } = await req.json();
 
   if (action === 'cancel') {
     await db.from('appointments').update({

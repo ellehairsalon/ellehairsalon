@@ -7,9 +7,14 @@ const MES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'ag
 
 export default async function Clients({ searchParams }) {
   if (!(await isAdmin())) redirect('/admin/login');
-  const q = String((await searchParams).q || '').trim().replace(/[%,()]/g, '');
-  let query = db.from('clients').select('id,full_name,phone').order('full_name').limit(100);
-  if (q) query = query.or(`full_name.ilike.%${q}%,phone.ilike.%${q}%`);
+  const q = String((await searchParams).q || '').trim().replace(/[%,()*]/g, '');
+  let query = db.from('clients').select('id,full_name,phone,email').order('full_name').limit(100);
+  if (q) {
+    const digits = q.replace(/\D/g, '');
+    const parts = [`full_name.ilike.%${q}%`, `email.ilike.%${q}%`, `cedula.ilike.%${q}%`, `phone.ilike.%${q}%`];
+    if (digits.length >= 7) parts.push(`phone.ilike.%${digits.slice(-9)}%`); // acepta 0993… o +593993…
+    query = query.or(parts.join(','));
+  }
   const [{ data }, { data: bd }] = await Promise.all([
     query,
     db.from('clients').select('id,full_name,birthday_month,birthday_day').not('birthday_month', 'is', null),
@@ -31,9 +36,11 @@ export default async function Clients({ searchParams }) {
         <p className="bday">🎂 Esta semana: {soon.map(({ c, hit }) =>
           `${c.full_name} (${hit.i === 0 ? 'hoy' : hit.i === 1 ? 'mañana' : `${hit.d} de ${MES[hit.m - 1]}`})`).join(', ')}</p>
       )}
-      <form><input name="q" defaultValue={q} placeholder="Buscar por nombre o teléfono" /></form>
+      <form><input name="q" defaultValue={q} placeholder="Buscar por nombre, teléfono, correo o cédula" /></form>
       {(data || []).map((c) => (
-        <a key={c.id} className="row" href={`/admin/clientas/${c.id}`}><span>{c.full_name}</span><span>{c.phone}</span></a>
+        <a key={c.id} className="row" href={`/admin/clientas/${c.id}`}>
+          <span>{c.full_name}{c.email && <small className="note"> · {c.email}</small>}</span><span>{c.phone}</span>
+        </a>
       ))}
       {data?.length === 0 && <p className="note">No encontramos clientas con esa búsqueda.</p>}
     </main>

@@ -14,8 +14,6 @@ export default function Booking({ categories }) {
   const [slot, setSlot] = useState(null);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [bm, setBm] = useState('');
-  const [bd, setBd] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(null);
@@ -30,7 +28,7 @@ export default function Booking({ categories }) {
     setBusy(true); setError('');
     const r = await fetch('/api/book', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ service_id: svc.id, starts_at: slot.starts_at, name, phone, birthday_month: bm || null, birthday_day: bd || null }),
+      body: JSON.stringify({ service_id: svc.id, starts_at: slot.starts_at, name, phone }),
     });
     const j = await r.json();
     setBusy(false);
@@ -93,12 +91,6 @@ export default function Booking({ categories }) {
           <h2>Tus datos</h2>
           <label>Nombre<input value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" /></label>
           <label>WhatsApp<input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" placeholder="09XXXXXXXX" autoComplete="tel" /></label>
-          <label>Cumpleaños (opcional, solo día y mes)
-            <div className="grid">
-              <select value={bd} onChange={(e) => setBd(e.target.value)}><option value="">Día</option>{Array.from({ length: 31 }, (_, i) => <option key={i} value={i + 1}>{i + 1}</option>)}</select>
-              <select value={bm} onChange={(e) => setBm(e.target.value)}><option value="">Mes</option>{['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'].map((m, i) => <option key={m} value={i + 1}>{m}</option>)}</select>
-            </div>
-          </label>
           {error && <p className="error">{error}</p>}
           <button className="cta" disabled={busy || name.trim().length < 2 || phone.length < 9} onClick={book}>
             {busy ? 'Agendando…' : 'Confirmar cita'}

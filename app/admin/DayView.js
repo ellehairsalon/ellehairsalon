@@ -102,6 +102,9 @@ export default function DayView({ appts, isToday }) {
               {sel.status === 'confirmed' && sel.started_at && ' · En atención'}
               {sel.status === 'confirmed' && !sel.started_at && sel.checked_in_at && ' · En espera'}
             </p>
+            {sel.clients.internal_notes && (
+              <div className="bday" style={{ whiteSpace: 'pre-wrap' }}><b>Nota de la clienta:</b> {sel.clients.internal_notes}</div>
+            )}
             <div className="actions">
               <a className="ghost" href={`https://wa.me/${sel.clients.phone.replace(/\D/g, '')}`}>WhatsApp</a>
               <a className="ghost" href={`https://wa.me/${sel.clients.phone.replace(/\D/g, '')}?text=${encodeURIComponent(
