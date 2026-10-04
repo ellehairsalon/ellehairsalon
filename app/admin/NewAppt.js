@@ -29,7 +29,7 @@ export default function NewAppt() {
     setAsap(null); setSlot(null); setSlots([]); setDate('');
     if (!svc) return;
     fetch(`/api/admin/slots?service=${svc}&asap=1`).then((r) => r.json())
-      .then((j) => { setAsap(j.slot); setSlot(j.slot ? { ...j.slot, walk: true } : null); });
+      .then((j) => { setAsap(j.slot); });
   }, [svc]);
 
   useEffect(() => {
@@ -42,7 +42,9 @@ export default function NewAppt() {
     setBusy(true); setErr('');
     const r = await fetch('/api/admin/new', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ service_id: svc, starts_at: slot.starts_at, name, phone, walk_in: !!slot.walk }),
+      body: JSON.stringify(slot.now
+        ? { service_id: svc, name, phone, start_now: true }
+        : { service_id: svc, starts_at: slot.starts_at, name, phone, walk_in: !!slot.walk }),
     });
     const j = await r.json();
     setBusy(false);
@@ -65,6 +67,10 @@ export default function NewAppt() {
 
             {svc && (
               <>
+                <h3>Llegó sin cita</h3>
+                <button className={'row' + (slot?.now ? ' on' : '')} onClick={() => setSlot({ now: true })}>
+                  <span>Empezar ahora mismo</span><span>pasa a "En atención"</span>
+                </button>
                 <h3>Lo antes posible</h3>
                 {asap
                   ? <button className={'row' + (slot?.walk ? ' on' : '')} onClick={() => setSlot({ ...asap, walk: true })}>
@@ -75,7 +81,7 @@ export default function NewAppt() {
                 <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
                 <div className="grid">
                   {slots.map((s) => (
-                    <button key={s.starts_at} className={'chip' + (!slot?.walk && slot?.starts_at === s.starts_at ? ' on' : '')}
+                    <button key={s.starts_at} className={'chip' + (!slot?.walk && !slot?.now && slot?.starts_at === s.starts_at ? ' on' : '')}
                       onClick={() => setSlot(s)}>{s.time}{s.early && '*'}</button>
                   ))}
                 </div>
@@ -90,7 +96,7 @@ export default function NewAppt() {
                 {err && <p className="error">{err}</p>}
                 <div className="actions">
                   <button className="cta" disabled={busy || name.trim().length < 2 || phone.length < 9} onClick={save}>
-                    {busy ? 'Guardando…' : 'Agendar'}
+                    {busy ? 'Guardando…' : slot.now ? 'Empezar ahora' : 'Agendar'}
                   </button>
                   <button className="ghost" onClick={() => setOpen(false)}>Cancelar</button>
                 </div>
