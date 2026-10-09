@@ -15,6 +15,10 @@ const deadlineText = (iso, hours) => new Date(+new Date(iso) - hours * 3600000).
   weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: TZ,
 });
 
+const deadlineShort = (iso, hours) => new Date(+new Date(iso) - hours * 3600000).toLocaleString('es-EC', {
+  weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: TZ,
+}).replace(/\./g, '');
+
 export default function Booking({ categories, review = true, leadHours = 10, policyHours = 10 }) {
   const [step, setStep] = useState(1);
   const [cat, setCat] = useState(null);
@@ -26,6 +30,7 @@ export default function Booking({ categories, review = true, leadHours = 10, pol
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [note, setNote] = useState('');
+  const [noteOpen, setNoteOpen] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(null);
@@ -175,32 +180,51 @@ export default function Booking({ categories, review = true, leadHours = 10, pol
           <h2>Tus datos</h2>
           <label>Nombre<input value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" /></label>
           <label>WhatsApp<input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" placeholder="09XXXXXXXX" autoComplete="tel" /></label>
-          <label>Nota para el salón (opcional)
-            <textarea rows={3} maxLength={300} value={note} onChange={(e) => setNote(e.target.value)}
-              placeholder="Ej. quiero cambiar de color, voy con mi hija…" />
-          </label>
           <button className="cta" disabled={name.trim().length < 2 || phone.replace(/\D/g, '').length < 9} onClick={() => setStep(4)}>Continuar</button>
         </section>
       )}
 
       {step === 4 && slot && (
         <section>
-          <h2>Revisa tu {review ? 'solicitud' : 'cita'}</h2>
-          <dl className="summary">
-            <dt>Servicio</dt><dd>{svc.name} · {dur(svc.duration_min)}</dd>
-            <dt>Fecha</dt><dd>{cap1(longDay(date))}</dd>
-            <dt>Hora</dt><dd>{slot.time}{slot.early && ` (incluye $${slot.fee} de recargo por horario temprano)`}</dd>
-            <dt>Nombre</dt><dd>{name.trim()}</dd>
-            <dt>WhatsApp</dt><dd>{phone.trim()}</dd>
-            {note.trim() && (<><dt>Nota</dt><dd>{note.trim()}</dd></>)}
-            <dt>Total</dt><dd>${total}</dd>
-          </dl>
-          <div className="policy">
-            <strong>Política de cancelación</strong><br />
-            {deadlinePassed
-              ? <>Tu cita es muy pronto: para cambios o cancelaciones, escríbenos por WhatsApp.</>
-              : <>Cancela o cambia tu cita antes del <b>{deadlineText(slot.starts_at, policyHours)}</b>. Después, solo por WhatsApp y se registrará como cancelación tardía.</>}
+          <h2>Confirma tu {review ? 'solicitud' : 'cita'}</h2>
+          <div className="card">
+            <div className="crow">
+              <span className="ico">📅</span>
+              <div>
+                <b>{cap1(longDay(date))}</b>
+                <small>{slot.time} · {dur(svc.duration_min)}</small>
+                <small>Total: ${total}{slot.early && ` (incluye $${slot.fee} de recargo por horario temprano)`}</small>
+              </div>
+            </div>
+            <div className="crow">
+              <span className="ico">✂️</span>
+              <div><b>{svc.name}</b><small>{categories.find((c) => c.services.some((x) => x.id === svc.id))?.name}</small></div>
+            </div>
+            <div className="crow">
+              <span className="ico">👤</span>
+              <div><b>{name.trim()}</b><small>{phone.trim()}</small></div>
+            </div>
           </div>
+
+          <div className="sechead">
+            <h3>Nota para el salón</h3>
+            <button className="lnk" onClick={() => setNoteOpen(!noteOpen)}>{noteOpen ? 'Listo' : note.trim() ? 'Editar' : 'Agregar'}</button>
+          </div>
+          {noteOpen
+            ? <textarea rows={3} maxLength={300} autoFocus value={note} onChange={(e) => setNote(e.target.value)}
+                placeholder="Ej. quiero cambiar de color, voy con mi hija…" />
+            : note.trim() && <p className="notebox">{note.trim()}</p>}
+
+          <div className="sechead"><h3>Política de cancelación</h3></div>
+          {deadlinePassed ? (
+            <p className="note">Tu cita es muy pronto: para cambios o cancelaciones, escríbenos por WhatsApp.</p>
+          ) : (
+            <>
+              <span className="deadline">Cancela antes del {deadlineShort(slot.starts_at, policyHours)}</span>
+              <p className="note">Puedes cambiar o cancelar tu cita sin costo hasta esa hora, desde el enlace que recibirás. Después, solo por WhatsApp y se registrará como cancelación tardía.</p>
+            </>
+          )}
+
           {review && <p className="note">El salón revisará tu solicitud y te confirmará por WhatsApp. Todavía no es una cita confirmada.</p>}
           {error && <p className="error">{error}</p>}
           <button className="cta" disabled={busy} onClick={book}>
