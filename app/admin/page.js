@@ -16,13 +16,15 @@ export default async function Admin({ searchParams }) {
   const date = /^\d{4}-\d{2}-\d{2}$/.test(sp.date || '') ? sp.date : today();
   const [m, d] = [+date.slice(5, 7), +date.slice(8, 10)];
 
-  const [{ data }, { data: bdays }] = await Promise.all([
+  const [{ data }, { data: bdays }, { data: cfg }] = await Promise.all([
     db.from('appointments')
-      .select('id,client_id,starts_at,ends_at,status,price,early_fee,notes,manage_token,checked_in_at,started_at,services(name,service_categories(name)),stylists(name),clients(full_name,phone,internal_notes)')
+      .select('id,client_id,starts_at,ends_at,status,price,early_fee,notes,client_note,manage_token,checked_in_at,started_at,services(name,service_categories(name)),stylists(name),clients(full_name,phone,internal_notes)')
       .gte('starts_at', `${date}T00:00:00${TZ}`).lte('starts_at', `${date}T23:59:59${TZ}`)
       .neq('status', 'cancelled').order('starts_at'),
     db.from('clients').select('id,full_name').eq('birthday_month', m).eq('birthday_day', d),
+    db.from('salon_settings').select('reschedule_min_hours').eq('id', 1).single(),
   ]);
+  const hours = cfg?.reschedule_min_hours ?? 10;
   const label = new Date(date + 'T12:00:00Z')
     .toLocaleDateString('es-EC', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
 
@@ -35,7 +37,7 @@ export default async function Admin({ searchParams }) {
       </div>
       <h1 className="cap">{label}</h1>
       {bdays?.length > 0 && <p className="bday">🎂 Cumpleaños: {bdays.map((b) => b.full_name).join(', ')}</p>}
-      <DayView appts={data || []} isToday={date === today()} />
+      <DayView appts={data || []} isToday={date === today()} policyHours={hours} />
       <NewAppt />
     </main>
   );

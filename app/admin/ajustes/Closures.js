@@ -30,7 +30,6 @@ export default function Closures() {
 
   return (
     <section>
-      <h2>Cerrar horarios</h2>
       <p className="note">Los clientes no podrán reservar en ese tiempo. Útil para salir temprano, un día libre o vacaciones.</p>
       <div className="actions">
         <button className="ghost" onClick={() => { setFrom(`${today()}T00:00`); setTo(`${today()}T23:59`); }}>Hoy todo el día</button>

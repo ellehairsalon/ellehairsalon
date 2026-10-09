@@ -28,7 +28,7 @@ export async function GET(req, { params }) {
   }
   return Response.json({
     appt: { service: a.services.name, starts_at: a.starts_at, price: a.price, early_fee: a.early_fee, status: a.status },
-    canChange, hours, slots,
+    canChange, hours, slots, deadline: +new Date(a.starts_at) - hours * 3600000,
     profile: { needs: !a.clients?.email || !a.clients?.birthday_month }, // ¿falta completar el perfil?
   });
 }

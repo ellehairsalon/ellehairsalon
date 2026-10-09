@@ -31,7 +31,6 @@ export default function ScheduleEditor() {
 
   return (
     <section>
-      <h2>Horario de atención</h2>
       <p className="note">Los cambios se guardan solos. {msg}</p>
       {hours.map((h) => (
         <div className="svc" key={h.weekday}>
@@ -45,7 +44,7 @@ export default function ScheduleEditor() {
           )}
         </div>
       ))}
-      <h2>Recargo por horario temprano</h2>
+      <h3>Recargo por horario temprano</h3>
       <div className="svc-f">
         <label>Tipo
           <select value={cfg.early_fee_type} onChange={(e) => setFee({ early_fee_type: e.target.value })}>

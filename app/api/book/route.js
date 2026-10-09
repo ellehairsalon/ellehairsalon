@@ -24,7 +24,7 @@ async function nextOpening() {
 }
 
 export async function POST(req) {
-  const { service_id, starts_at, name, phone } = await req.json();
+  const { service_id, starts_at, name, phone, note } = await req.json();
   const p = normPhone(phone), n = String(name || '').trim().slice(0, 100);
   if (!p || n.length < 2 || !/^\d{4}-\d{2}-\d{2}T/.test(starts_at || ''))
     return err('Revisa tu nombre y tu número de WhatsApp.', 400);
@@ -59,6 +59,7 @@ export async function POST(req) {
     .insert({
       client_id: client.id, stylist_id: slot.stylist_id, service_id, starts_at, ends_at,
       price: svc.price, early_fee: slot.fee, status: needsReview ? 'pending' : 'confirmed',
+      client_note: String(note || '').trim().slice(0, 300) || null,
     })
     .select('manage_token').single();
   if (error) return err('Ese horario acaba de ocuparse. Elige otro.', 409);

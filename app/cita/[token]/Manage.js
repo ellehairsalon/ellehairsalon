@@ -93,6 +93,7 @@ export default function Manage({ token }) {
 
       {mode === 'view' && (
         <>
+          {d.canChange && !pending && d.deadline && <p className="note">Puedes cambiarla o cancelarla hasta el {fmt(d.deadline)}.</p>}
           <div className="actions">
             <button className="ghost" disabled={!d.canChange} onClick={() => setMode('change')}>Cambiar</button>
             <button className="ghost" onClick={() => setMode('cancel')}>{pending ? 'Cancelar solicitud' : 'Cancelar cita'}</button>

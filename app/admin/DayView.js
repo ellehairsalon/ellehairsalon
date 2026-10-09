@@ -26,7 +26,7 @@ function layout(appts) {
   return out;
 }
 
-export default function DayView({ appts, isToday }) {
+export default function DayView({ appts, isToday, policyHours = 10 }) {
   const router = useRouter();
   const [sel, setSel] = useState(null);
   const [note, setNote] = useState('');
@@ -103,6 +103,7 @@ export default function DayView({ appts, isToday }) {
               {sel.status === 'confirmed' && sel.started_at && ' · En atención'}
               {sel.status === 'confirmed' && !sel.started_at && sel.checked_in_at && ' · En espera'}
             </p>
+            {sel.client_note && <div className="bday" style={{ whiteSpace: 'pre-wrap' }}><b>📝 Nota de la clienta:</b> {sel.client_note}</div>}
             {sel.clients.internal_notes && (
               <div className="bday" style={{ whiteSpace: 'pre-wrap' }}><b>Nota de la clienta:</b> {sel.clients.internal_notes}</div>
             )}
@@ -123,7 +124,7 @@ export default function DayView({ appts, isToday }) {
             )}
             {sel.status === 'confirmed' && (
               <div className="actions">
-                <a className="ghost" href={waLink(sel.clients.phone, confirmText(sel, window.location.origin))}>Reenviar confirmación</a>
+                <a className="ghost" href={waLink(sel.clients.phone, confirmText(sel, window.location.origin, policyHours))}>Reenviar confirmación</a>
               </div>
             )}
             {sel.status === 'confirmed' && (

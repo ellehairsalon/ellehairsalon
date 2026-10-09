@@ -25,7 +25,6 @@ export default function BookingSettings() {
 
   return (
     <section>
-      <h2>Citas que piden las clientas</h2>
       <p className="note">Los cambios se guardan solos. {msg}</p>
       {MODES.map((m) => (
         <button key={m.id} className={'mode' + ((cfg.approval_mode || 'manual') === m.id ? ' on' : '')} onClick={() => save({ approval_mode: m.id })}>

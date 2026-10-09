@@ -11,7 +11,7 @@ const ago = (iso) => {
   return m < 60 ? `hace ${m} min` : m < 1440 ? `hace ${Math.round(m / 60)} h` : `hace ${Math.round(m / 1440)} d`;
 };
 
-export default function Inbox({ items }) {
+export default function Inbox({ items, hours = 10 }) {
   const router = useRouter();
   const [done, setDone] = useState({}); // id -> { state: 'confirmed' | 'rejected', item }: ya respondida, falta enviar el WhatsApp
   const [ask, setAsk] = useState(null); // id de la solicitud que se está por rechazar
@@ -47,6 +47,7 @@ export default function Inbox({ items }) {
             <p style={{ margin: '6px 0' }}>
               {a.services.name}<br />
               <b style={{ textTransform: 'capitalize' }}>{when(a.starts_at)}</b>
+              {a.client_note && <><br /><span>📝 {a.client_note}</span></>}
               {a.early_fee > 0 && <><br /><span className="note">Incluye ${a.early_fee} de horario temprano</span></>}
             </p>
             {!st && ask !== a.id && (
@@ -68,7 +69,7 @@ export default function Inbox({ items }) {
               <>
                 <p>✓ Confirmada. Falta avisarle a la clienta:</p>
                 <div className="actions">
-                  <a className="cta" style={{ textDecoration: 'none', textAlign: 'center', color: '#fff' }} href={waLink(a.clients.phone, confirmText(a, origin))}
+                  <a className="cta" style={{ textDecoration: 'none', textAlign: 'center', color: '#fff' }} href={waLink(a.clients.phone, confirmText(a, origin, hours))}
                     onClick={() => setTimeout(() => setDone((d) => { const n = { ...d }; delete n[a.id]; return n; }), 600)}>Enviar confirmación por WhatsApp</a>
                 </div>
               </>

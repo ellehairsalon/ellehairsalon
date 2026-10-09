@@ -89,3 +89,41 @@ a.ghost { display:inline-block; }
 .mode { display:block; width:100%; text-align:left; padding:12px; margin:8px 0; background:#fff; border:1px solid var(--line); font:inherit; color:inherit; cursor:pointer; }
 .mode.on { border-color:var(--berry); box-shadow:inset 3px 0 0 var(--berry); }
 .mode small { display:block; color:var(--muted); }
+
+/* Reserva en pasos */
+.steps { display:flex; gap:6px; margin:20px 0 4px; }
+.steps i { flex:1; height:4px; border-radius:2px; background:var(--line); }
+.steps i.on { background:var(--berry); }
+.back { background:none; border:0; padding:8px 0; margin-top:4px; font:inherit; color:var(--berry); cursor:pointer; }
+.tiles { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:12px 0; }
+.tile { display:flex; flex-direction:column; gap:2px; padding:18px 14px; background:#fff; border:1px solid var(--line); border-radius:14px;
+  font:inherit; font-size:1.05rem; font-weight:600; color:inherit; text-align:left; cursor:pointer; }
+.tile small { font-weight:400; color:var(--muted); font-size:.8rem; }
+.tile.on { border-color:var(--berry); box-shadow:inset 0 0 0 1px var(--berry); }
+.weekbar { display:flex; align-items:center; justify-content:space-between; margin:12px 0 6px; }
+.weekbar .cap { font-size:1rem; margin:0; font-weight:600; }
+.weekbar .ghost { padding:6px 16px; font-size:1.2rem; }
+.daystrip { display:grid; grid-template-columns:repeat(7,1fr); gap:6px; }
+.day { display:flex; flex-direction:column; align-items:center; padding:8px 0; background:#fff; border:1px solid var(--line); border-radius:12px;
+  font:inherit; font-weight:600; color:inherit; cursor:pointer; }
+.day small { font-weight:400; color:var(--muted); text-transform:capitalize; font-size:.7rem; }
+.day:disabled { opacity:.35; background:none; cursor:not-allowed; }
+.day.on { background:var(--berry); border-color:var(--berry); color:#fff; }
+.day.on small { color:#fff; }
+.summary { margin:12px 0; display:grid; grid-template-columns:auto 1fr; gap:8px 14px; }
+.summary dt { color:var(--muted); font-size:.9rem; }
+.summary dd { margin:0; }
+.policy { background:#fff; border:1px solid var(--line); border-radius:10px; padding:12px; margin:12px 0; font-size:.9rem; }
+textarea { width:100%; margin-top:4px; padding:11px; border:1px solid var(--line); background:#fff; font:inherit; color:var(--ink); }
+
+/* Ajustes plegables */
+.fold { border-bottom:1px solid var(--line); }
+.fold > summary { padding:16px 0; font-family:Georgia,serif; font-size:1.25rem; cursor:pointer; list-style:none; display:flex; justify-content:space-between; }
+.fold > summary::-webkit-details-marker { display:none; }
+.fold > summary::after { content:'›'; color:var(--muted); transition:transform .15s; }
+.fold[open] > summary::after { transform:rotate(90deg); }
+.fold .fold > summary { font-family:system-ui,sans-serif; font-size:1rem; font-weight:600; padding:12px 0; }
+.fold .fold { border-bottom:1px solid var(--line); margin-left:0; }
+.fold section { margin-bottom:16px; }
+.dayhead { font-size:1.05rem; font-weight:600; color:var(--ink); margin:20px 0 6px; }
+a.nb { word-break:normal; }
