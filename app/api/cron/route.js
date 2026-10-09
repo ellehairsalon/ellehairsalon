@@ -7,5 +7,8 @@ export async function GET(req) {
     return Response.json({ error: 'No autorizado' }, { status: 401 });
   const { error } = await db.from('appointments').update({ status: 'completed' })
     .eq('status', 'confirmed').lt('ends_at', new Date().toISOString());
+  // Solicitudes que nadie respondió y cuya hora ya pasó: se cierran solas.
+  await db.from('appointments').update({ status: 'cancelled', cancelled_at: new Date().toISOString() })
+    .eq('status', 'pending').lt('starts_at', new Date().toISOString());
   return Response.json({ ok: !error });
 }

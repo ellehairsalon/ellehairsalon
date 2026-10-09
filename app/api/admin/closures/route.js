@@ -28,6 +28,6 @@ export async function POST(req) {
     .insert(st.map((s) => ({ stylist_id: s.id, starts_at, ends_at, reason: String(reason || '').slice(0, 100) || null })));
   if (error) return bad('No se pudo guardar.', 500);
   const { count } = await db.from('appointments').select('id', { count: 'exact', head: true })
-    .eq('status', 'confirmed').lt('starts_at', ends_at).gt('ends_at', starts_at);
+    .in('status', ['confirmed', 'pending']).lt('starts_at', ends_at).gt('ends_at', starts_at);
   return Response.json({ ok: true, conflicts: count || 0 });
 }

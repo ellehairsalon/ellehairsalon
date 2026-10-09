@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { WHATSAPP } from '@/lib/config';
 
 const days = Array.from({ length: 14 }, (_, i) =>
   new Date(Date.now() - 5 * 3600000 + i * 86400000).toISOString().slice(0, 10));
@@ -7,7 +8,7 @@ const dayLabel = (d) => new Date(d + 'T12:00:00Z')
   .toLocaleDateString('es-EC', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
 const dur = (m) => (m >= 60 ? `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ''}` : `${m} min`);
 
-export default function Booking({ categories }) {
+export default function Booking({ categories, review = true, leadHours = 10 }) {
   const [svc, setSvc] = useState(null);
   const [date, setDate] = useState(days[0]);
   const [slots, setSlots] = useState(null);
@@ -33,18 +34,36 @@ export default function Booking({ categories }) {
     const j = await r.json();
     setBusy(false);
     if (!r.ok) { setError(j.error); return; }
-    setDone(j.token);
+    setDone(j);
   }
 
-  if (done) return (
-    <section>
-      <h2>Tu cita está confirmada</h2>
-      <p>{svc.name}, {dayLabel(date)} a las {slot.time}.</p>
-      {slot.early && <p className="note">* Incluye ${slot.fee} de recargo por horario temprano.</p>}
-      <p>Guarda este enlace para ver, cambiar o cancelar tu cita:</p>
-      <p><a href={`/cita/${done}`}>{typeof window !== 'undefined' ? window.location.origin : ''}/cita/{done}</a></p>
-    </section>
-  );
+  if (done) {
+    const link = `${typeof window !== 'undefined' ? window.location.origin : ''}/cita/${done.token}`;
+    return done.status === 'pending' ? (
+      <section>
+        <h2>{done.open_now === false ? 'Recibimos tu solicitud' : 'El salón está revisando tu solicitud'}</h2>
+        <p>{svc.name}, {dayLabel(date)} a las {slot.time}.</p>
+        {slot.early && <p className="note">* Incluye ${slot.fee} de recargo por horario temprano.</p>}
+        <p>
+          {done.open_now === false
+            ? `Elena la revisará ${done.opens} y te confirmará por WhatsApp.`
+            : 'Te confirmaremos por WhatsApp en cuanto la revisemos.'}
+          {' '}Tu cita todavía no está confirmada.
+        </p>
+        <p>Con este enlace puedes ver el estado de tu solicitud, cambiarla o cancelarla:</p>
+        <p><a href={link}>{link}</a></p>
+        <p className="note">Guárdalo: se actualiza solo cuando el salón confirme.</p>
+      </section>
+    ) : (
+      <section>
+        <h2>Tu cita está confirmada</h2>
+        <p>{svc.name}, {dayLabel(date)} a las {slot.time}.</p>
+        {slot.early && <p className="note">* Incluye ${slot.fee} de recargo por horario temprano.</p>}
+        <p>Guarda este enlace para ver, cambiar o cancelar tu cita:</p>
+        <p><a href={link}>{link}</a></p>
+      </section>
+    );
+  }
 
   return (
     <>
@@ -73,6 +92,7 @@ export default function Booking({ categories }) {
           <h2>Hora</h2>
           {slots === null && <p className="note">Buscando horarios…</p>}
           {slots?.length === 0 && <p className="note">No hay horarios libres este día. Prueba con otro día.</p>}
+          <p className="note">Las citas se piden con al menos {leadHours} horas de anticipación. ¿Es urgente? <a href={`https://wa.me/${WHATSAPP}`}>Escríbenos por WhatsApp</a>.</p>
           <div className="grid">
             {slots?.map((s) => (
               <button key={s.starts_at} className={'chip' + (slot?.starts_at === s.starts_at ? ' on' : '')} onClick={() => setSlot(s)}>
@@ -91,9 +111,10 @@ export default function Booking({ categories }) {
           <h2>Tus datos</h2>
           <label>Nombre<input value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" /></label>
           <label>WhatsApp<input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" placeholder="09XXXXXXXX" autoComplete="tel" /></label>
+          {review && <p className="note">El salón revisará tu solicitud y te confirmará por WhatsApp.</p>}
           {error && <p className="error">{error}</p>}
           <button className="cta" disabled={busy || name.trim().length < 2 || phone.length < 9} onClick={book}>
-            {busy ? 'Agendando…' : 'Confirmar cita'}
+            {busy ? 'Enviando…' : review ? 'Enviar solicitud de cita' : 'Confirmar cita'}
           </button>
         </section>
       )}

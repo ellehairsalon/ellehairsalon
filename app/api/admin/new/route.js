@@ -37,7 +37,7 @@ export async function POST(req) {
     let pick = cands[0], overlap = true; // prefiere una estilista libre; si no hay, se permite el traslape
     for (const c of cands) {
       const { count } = await db.from('appointments').select('id', { count: 'exact', head: true })
-        .eq('stylist_id', c.id).eq('status', 'confirmed').lt('starts_at', end).gt('ends_at', start);
+        .eq('stylist_id', c.id).in('status', ['confirmed', 'pending']).lt('starts_at', end).gt('ends_at', start);
       if (!count) { pick = c; overlap = false; break; }
     }
     const client = await findClient(p, n);

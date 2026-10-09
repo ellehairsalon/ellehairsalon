@@ -33,6 +33,13 @@ export default function Manage({ token }) {
   }, [token]);
 
   useEffect(() => { load(); }, [load]);
+  // Mientras la solicitud está en revisión, la página se actualiza sola cuando el salón responde.
+  const pending = d?.appt?.status === 'pending';
+  useEffect(() => {
+    if (!pending || mode !== 'view') return;
+    const t = setInterval(() => load(), 30000);
+    return () => clearInterval(t);
+  }, [pending, mode, load]);
   useEffect(() => {
     if (mode !== 'change') return;
     setSlots(null); setSlot(null);
@@ -74,7 +81,12 @@ export default function Manage({ token }) {
 
   return (
     <section>
-      <h2>Tu cita</h2>
+      {pending ? (
+        <>
+          <h2>El salón está revisando tu solicitud</h2>
+          <p className="note">Todavía no está confirmada. Te avisaremos por WhatsApp; esta página también se actualiza sola.</p>
+        </>
+      ) : <h2>Tu cita</h2>}
       <p><strong>{a.service}</strong><br />{fmt(a.starts_at)}</p>
       <p className="note">Total: ${a.price}{a.early_fee > 0 && ` + $${a.early_fee} por horario temprano`}</p>
       {msg && <p className="error">{msg}</p>}
@@ -83,11 +95,11 @@ export default function Manage({ token }) {
         <>
           <div className="actions">
             <button className="ghost" disabled={!d.canChange} onClick={() => setMode('change')}>Cambiar</button>
-            <button className="ghost" onClick={() => setMode('cancel')}>Cancelar cita</button>
+            <button className="ghost" onClick={() => setMode('cancel')}>{pending ? 'Cancelar solicitud' : 'Cancelar cita'}</button>
           </div>
-          {!d.canChange && <p className="note">Para cambios con menos de {d.hours} horas, <a href={`https://wa.me/${WHATSAPP}`}>escríbenos por WhatsApp</a>.</p>}
+          {!d.canChange && !pending && <p className="note">Para cambios con menos de {d.hours} horas, <a href={`https://wa.me/${WHATSAPP}`}>escríbenos por WhatsApp</a>.</p>}
 
-          {d.profile?.needs && !pfDone && (
+          {d.profile?.needs && !pfDone && !pending && (
             <div className="bday" style={{ marginTop: 28 }}>
               <strong>Completa tu perfil</strong> <span className="note">(opcional, solo esta vez)</span>
               <label>Tu cumpleaños
@@ -116,7 +128,7 @@ export default function Manage({ token }) {
 
       {mode === 'cancel' && (
         <>
-          <p>¿Seguro que quieres cancelar?{!d.canChange && ` Al faltar menos de ${d.hours} horas, se registrará como cancelación tardía.`}</p>
+          <p>¿Seguro que quieres cancelar?{!pending && !d.canChange && ` Al faltar menos de ${d.hours} horas, se registrará como cancelación tardía.`}</p>
           <div className="actions">
             <button className="cta" disabled={busy} onClick={() => act({ action: 'cancel' })}>Sí, cancelar</button>
             <button className="ghost" onClick={() => setMode('view')}>Volver</button>
@@ -144,7 +156,7 @@ export default function Manage({ token }) {
           </div>
           {slots?.some((s) => s.early) && <p className="note">* Horario temprano con recargo de ${slots.find((s) => s.early).fee}.</p>}
           <div className="actions">
-            <button className="cta" disabled={!slot || busy} onClick={() => act({ action: 'reschedule', starts_at: slot.starts_at })}>Mover mi cita</button>
+            <button className="cta" disabled={!slot || busy} onClick={() => act({ action: 'reschedule', starts_at: slot.starts_at })}>{pending ? 'Cambiar mi solicitud' : 'Mover mi cita'}</button>
             <button className="ghost" onClick={() => setMode('view')}>Volver</button>
           </div>
         </>

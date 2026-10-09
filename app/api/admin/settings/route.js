@@ -20,6 +20,10 @@ export async function POST(req) {
   if (b.kind === 'fee') {
     if (!['fixed', 'percent'].includes(b.early_fee_type) || !(+b.early_fee_value >= 0)) return bad();
     q = db.from('salon_settings').update({ early_fee_type: b.early_fee_type, early_fee_value: +b.early_fee_value }).eq('id', 1);
+  } else if (b.kind === 'booking') {
+    const h = Math.round(+b.online_lead_hours);
+    if (!['manual', 'mixed', 'auto'].includes(b.approval_mode) || !(h >= 0 && h <= 72)) return bad();
+    q = db.from('salon_settings').update({ approval_mode: b.approval_mode, online_lead_hours: h }).eq('id', 1);
   } else if (b.kind === 'hours') {
     if (!(b.weekday >= 0 && b.weekday <= 6) || !T.test(b.open_time) || !T.test(b.close_time) || (b.early_open_time && !T.test(b.early_open_time))) return bad();
     q = db.from('business_hours').update({

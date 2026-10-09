@@ -1,6 +1,7 @@
 'use client';
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { waLink, confirmText } from '@/lib/wa';
 
 const PX = 64; // 64 px por hora
 const min = (iso) => { const t = new Date(+new Date(iso) - 5 * 3600000); return t.getUTCHours() * 60 + t.getUTCMinutes(); };
@@ -8,7 +9,7 @@ const hm = (iso) => new Date(iso).toLocaleTimeString('es-EC', { hour: '2-digit',
 const longDate = (iso) => new Date(iso).toLocaleDateString('es-EC', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'America/Guayaquil' });
 const COLORS = ['#f3d9e4', '#dfe8f6', '#e1efe3', '#f6ecd2', '#e7ddf3'];
 const colorOf = (n = '') => COLORS[[...n].reduce((a, c) => a + c.charCodeAt(0), 0) % COLORS.length];
-const STATUS = { completed: 'Completada', no_show: 'No vino' };
+const STATUS = { pending: 'Por confirmar', completed: 'Completada', no_show: 'No vino' };
 
 // Citas que coinciden en el tiempo se dibujan lado a lado.
 function layout(appts) {
@@ -72,7 +73,7 @@ export default function DayView({ appts, isToday }) {
         {isToday && nowMin >= START * 60 && nowMin < END * 60 && <div className="now" style={{ top: ((nowMin - START * 60) * PX) / 60 }} />}
         {items.map(({ a, s, e, col, cols }) => (
           <button key={a.id}
-            className={'blk' + (a.status !== 'confirmed' ? ' done' : '') + (a.started_at && a.status === 'confirmed' ? ' live' : '') + (a.checked_in_at && !a.started_at ? ' here' : '')}
+            className={'blk' + (a.status === 'pending' ? ' pend' : a.status !== 'confirmed' ? ' done' : '') + (a.started_at && a.status === 'confirmed' ? ' live' : '') + (a.checked_in_at && !a.started_at ? ' here' : '')}
             style={{
               top: ((s - START * 60) * PX) / 60, height: Math.max(((e - s) * PX) / 60 - 2, 30),
               left: `calc(${(col / cols) * 100}% + 4px)`, width: `calc(${100 / cols}% - 6px)`, right: 'auto',
@@ -115,6 +116,16 @@ export default function DayView({ appts, isToday }) {
             <div className="actions">
               <button className="ghost" disabled={busy} onClick={() => call(sel.id, 'note', { notes: note }).then((j) => j && setSel(null))}>Guardar nota</button>
             </div>
+            {sel.status === 'pending' && (
+              <div className="actions">
+                <a className="ghost" href="/admin/pendientes">Responder solicitud</a>
+              </div>
+            )}
+            {sel.status === 'confirmed' && (
+              <div className="actions">
+                <a className="ghost" href={waLink(sel.clients.phone, confirmText(sel, window.location.origin))}>Reenviar confirmación</a>
+              </div>
+            )}
             {sel.status === 'confirmed' && (
               <div className="actions">
                 {!sel.started_at && !sel.checked_in_at && <button className="ghost" disabled={busy} onClick={() => quick(sel, 'checkin')}>Llegó</button>}

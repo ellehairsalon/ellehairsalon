@@ -18,7 +18,8 @@ export async function GET(req, { params }) {
   const a = await load(token);
   if (!a) return bad('No encontramos esta cita.', 404);
   const hours = await minHours();
-  const canChange = a.status === 'confirmed' && hoursLeft(a) >= hours;
+  // Una solicitud en revisión se puede cambiar o cancelar libremente; una cita confirmada, hasta 'hours' antes.
+  const canChange = a.status === 'pending' ? hoursLeft(a) > 0 : a.status === 'confirmed' && hoursLeft(a) >= hours;
   const date = new URL(req.url).searchParams.get('date');
   let slots = [];
   if (canChange && /^\d{4}-\d{2}-\d{2}$/.test(date || '')) {
@@ -57,18 +58,18 @@ export async function POST(req, { params }) {
     return error ? bad('No se pudo guardar.', 500) : Response.json({ ok: true });
   }
 
-  if (a.status !== 'confirmed' || hoursLeft(a) <= 0) return bad('Esta cita ya no se puede modificar.', 409);
+  if (!['confirmed', 'pending'].includes(a.status) || hoursLeft(a) <= 0) return bad('Esta cita ya no se puede modificar.', 409);
   const hours = await minHours();
 
   if (action === 'cancel') {
     await db.from('appointments').update({
-      status: 'cancelled', cancelled_at: new Date().toISOString(), cancelled_late: hoursLeft(a) < hours,
-    }).eq('id', a.id);
+      status: 'cancelled', cancelled_at: new Date().toISOString(), cancelled_late: a.status === 'confirmed' && hoursLeft(a) < hours,
+    }).eq('id', a.id).in('status', ['confirmed', 'pending']);
     return Response.json({ ok: true });
   }
 
   if (action === 'reschedule') {
-    if (hoursLeft(a) < hours) return bad(`Para cambios con menos de ${hours} horas, escríbenos por WhatsApp.`, 403);
+    if (a.status === 'confirmed' && hoursLeft(a) < hours) return bad(`Para cambios con menos de ${hours} horas, escríbenos por WhatsApp.`, 403);
     const { slots, svc } = await getSlots(String(starts_at).slice(0, 10), a.service_id, a.id);
     const slot = slots.find((s) => s.starts_at === starts_at);
     if (!slot) return bad('Ese horario ya no está disponible. Elige otro.', 409);

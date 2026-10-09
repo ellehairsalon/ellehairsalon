@@ -4,7 +4,7 @@ import { isAdmin } from '@/lib/admin';
 import ClientForm from '../ClientForm';
 
 export const dynamic = 'force-dynamic';
-const STATUS = { confirmed: 'Pendiente', completed: 'Completada', cancelled: 'Cancelada', no_show: 'No vino' };
+const STATUS = { pending: 'Por confirmar', confirmed: 'Confirmada', completed: 'Completada', cancelled: 'Cancelada', no_show: 'No vino' };
 const when = (iso) => new Date(iso).toLocaleString('es-EC', {
   day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'America/Guayaquil',
 });

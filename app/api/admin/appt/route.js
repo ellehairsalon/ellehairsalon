@@ -44,6 +44,18 @@ export async function POST(req) {
     return error ? bad(BUSY, 409) : Response.json({ ok: true });
   }
 
+  // Solicitudes de clientas: Elena las confirma o las rechaza.
+  if (action === 'confirm' || action === 'reject') {
+    const patch = action === 'confirm'
+      ? { status: 'confirmed' }
+      : { status: 'cancelled', cancelled_at: new Date().toISOString() };
+    const { data, error } = await db.from('appointments').update(patch)
+      .eq('id', id).eq('status', 'pending').select('id');
+    if (error) return bad(BUSY, 409);
+    if (!data?.length) return bad('Esta solicitud ya fue respondida o cancelada por la clienta.', 409);
+    return Response.json({ ok: true });
+  }
+
   let q = db.from('appointments');
   if (action === 'note') q = q.update({ notes: String(notes || '').slice(0, 500) }).eq('id', id);
   else if (action === 'restore')
