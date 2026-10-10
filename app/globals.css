@@ -158,3 +158,11 @@ a.nb { word-break:normal; }
 .lnk { background:none; border:0; padding:4px 0; font:inherit; font-weight:600; color:var(--ink); text-decoration:underline; cursor:pointer; }
 .notebox { background:#fff; border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin:6px 0; white-space:pre-wrap; }
 .deadline { display:inline-block; margin:6px 0 4px; padding:5px 12px; border-radius:999px; background:#e8e2ec; font-weight:600; font-size:.9rem; }
+
+/* Varias personas */
+.party { background:#fff; border:1px solid var(--line); border-radius:14px; padding:10px 14px; margin:10px 0 4px; }
+.pline { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:6px 0; font-size:.95rem; }
+.pline + .pline { border-top:1px solid var(--line); }
+.x { background:none; border:0; font-size:1.4rem; line-height:1; color:var(--muted); cursor:pointer; padding:0 6px; }
+.party .lnk { margin-top:6px; color:var(--berry); }
+.plist { padding-left:18px; }

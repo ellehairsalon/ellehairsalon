@@ -1,4 +1,5 @@
-import { db, getSlots } from '@/lib/slots';
+import { randomUUID } from 'crypto';
+import { db, getGroupSlots, earlyFeeFor } from '@/lib/slots';
 import { normPhone } from '@/lib/validate';
 
 const err = (error, status) => Response.json({ error }, { status });
@@ -23,45 +24,62 @@ async function nextOpening() {
   return { open_now: false, opens: 'pronto' };
 }
 
+const MAX_PEOPLE = 5;
+
 export async function POST(req) {
-  const { service_id, starts_at, name, phone, note } = await req.json();
+  const body = await req.json();
+  const { starts_at, name, phone, note } = body;
+  // items: un servicio por persona. El primero es quien reserva; los demás son invitados con su nombre.
+  const raw = Array.isArray(body.items) && body.items.length ? body.items : [{ service_id: body.service_id }];
+  const items = raw.slice(0, MAX_PEOPLE).map((it, i) => ({
+    service_id: it.service_id, guest: i === 0 ? null : String(it.guest_name || '').trim().slice(0, 60),
+  }));
   const p = normPhone(phone), n = String(name || '').trim().slice(0, 100);
-  if (!p || n.length < 2 || !/^\d{4}-\d{2}-\d{2}T/.test(starts_at || ''))
+  if (!p || n.length < 2 || !/^\d{4}-\d{2}-\d{2}T/.test(starts_at || '') || items.some((it) => !it.service_id))
     return err('Revisa tu nombre y tu número de WhatsApp.', 400);
+  if (items.slice(1).some((it) => it.guest.length < 2)) return err('Escribe el nombre de cada persona.', 400);
 
   // El horario se vuelve a validar en el servidor (incluida la anticipación mínima): nunca se confía en el navegador.
-  const { slots, svc } = await getSlots(starts_at.slice(0, 10), service_id);
+  const { slots, items: svcs, svc } = await getGroupSlots(starts_at.slice(0, 10), items.map((it) => it.service_id));
   const slot = slots.find((s) => s.starts_at === starts_at);
   if (!slot) return err('Ese horario ya no está disponible. Elige otro.', 409);
 
   let { data: client } = await db.from('clients').select('*').eq('phone', p).maybeSingle();
   if (!client) ({ data: client } = await db.from('clients').insert({ phone: p, full_name: n }).select().single());
 
-  const { data: active } = await db.from('appointments').select('id,status')
-    .eq('client_id', client.id).in('status', ['confirmed', 'pending']).maybeSingle();
+  const { data: act } = await db.from('appointments').select('id,status')
+    .eq('client_id', client.id).in('status', ['confirmed', 'pending']).limit(1);
+  const active = act?.[0];
   if (active) return err(
     active.status === 'pending'
       ? 'Ya tienes una solicitud en revisión. Para verla, cambiarla o cancelarla usa el enlace que te dimos o escríbenos por WhatsApp.'
       : 'Ya tienes una cita agendada. Para cambiarla o cancelarla usa el enlace de tu confirmación o escríbenos por WhatsApp.', 409);
 
-  // ¿Esta cita necesita que Elena la revise?
+  // ¿Esta reserva necesita que Elena la revise?
   const { data: cfg } = await db.from('salon_settings').select('approval_mode').eq('id', 1).single();
   const mode = cfg?.approval_mode || 'manual';
   let needsReview = mode === 'manual';
-  if (mode === 'mixed') { // revisa: horario temprano con recargo, servicios largos (3 h o más) y clientas nuevas
+  if (mode === 'mixed') { // revisa: horario temprano con recargo, 3 h o más, clientas nuevas y reservas para varias personas
     const { count } = await db.from('appointments').select('id', { count: 'exact', head: true })
       .eq('client_id', client.id).eq('status', 'completed');
-    needsReview = slot.fee > 0 || svc.duration_min >= 180 || !count;
+    needsReview = slot.fee > 0 || svc.duration_min >= 180 || !count || items.length > 1;
   }
 
-  const ends_at = new Date(+new Date(starts_at) + svc.duration_min * 60000).toISOString();
-  const { data: appt, error } = await db.from('appointments')
-    .insert({
-      client_id: client.id, stylist_id: slot.stylist_id, service_id, starts_at, ends_at,
-      price: svc.price, early_fee: slot.fee, status: needsReview ? 'pending' : 'confirmed',
-      client_note: String(note || '').trim().slice(0, 300) || null,
-    })
-    .select('manage_token').single();
+  // Una cita por persona, una tras otra, con la misma estilista. Se guardan todas juntas o ninguna.
+  const group_id = items.length > 1 ? randomUUID() : null;
+  let cursor = +new Date(starts_at);
+  const rows = [];
+  for (let i = 0; i < items.length; i++) {
+    const sv = svcs[i];
+    const start = new Date(cursor).toISOString(), end = new Date(cursor + sv.duration_min * 60000).toISOString();
+    rows.push({
+      client_id: client.id, stylist_id: slot.stylist_id, service_id: sv.id, starts_at: start, ends_at: end,
+      price: sv.price, early_fee: await earlyFeeFor(start, +sv.price), status: needsReview ? 'pending' : 'confirmed',
+      group_id, guest_name: items[i].guest, client_note: i === 0 ? String(note || '').trim().slice(0, 300) || null : null,
+    });
+    cursor += sv.duration_min * 60000;
+  }
+  const { data: appts, error } = await db.from('appointments').insert(rows).select('manage_token');
   if (error) return err('Ese horario acaba de ocuparse. Elige otro.', 409);
-  return Response.json({ token: appt.manage_token, status: needsReview ? 'pending' : 'confirmed', ...(needsReview ? await nextOpening() : {}) });
+  return Response.json({ token: appts[0].manage_token, status: needsReview ? 'pending' : 'confirmed', ...(needsReview ? await nextOpening() : {}) });
 }

@@ -19,10 +19,15 @@ const deadlineShort = (iso, hours) => new Date(+new Date(iso) - hours * 3600000)
   weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: TZ,
 }).replace(/\./g, '');
 
+const hmLocal = (ms) => new Date(ms).toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: TZ });
+const MAX_PEOPLE = 5;
+
 export default function Booking({ categories, review = true, leadHours = 10, policyHours = 10 }) {
   const [step, setStep] = useState(1);
   const [cat, setCat] = useState(null);
-  const [svc, setSvc] = useState(null);
+  const [party, setParty] = useState([]); // [{ svc, guest }]: la primera persona es quien reserva
+  const [adding, setAdding] = useState(false); // eligiendo el servicio de otra persona
+  const [guest, setGuest] = useState('');
   const [week, setWeek] = useState(0);
   const [days, setDays] = useState(null); // [{date, slots}] de la semana en pantalla
   const [date, setDate] = useState(null);
@@ -34,14 +39,19 @@ export default function Booking({ categories, review = true, leadHours = 10, pol
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(null);
-  const jumped = useRef(false); // salta a la semana siguiente solo una vez por servicio
+  const jumped = useRef(false); // salta a la semana siguiente solo una vez por reserva
 
-  // Carga la semana: al elegir servicio o al moverse con ‹ ›. Si la primera semana está llena, salta a la siguiente.
+  const partyKey = party.map((x) => x.svc.id).join(',');
+  const totalMin = party.reduce((n, x) => n + x.svc.duration_min, 0);
+  const totalPrice = party.reduce((n, x) => n + +x.svc.price, 0);
+  const svc = party[0]?.svc;
+
+  // Carga la semana: al elegir servicios o al moverse con ‹ ›. Si la primera semana está llena, salta a la siguiente.
   useEffect(() => {
-    if (!svc) return;
+    if (!partyKey) return;
     let live = true;
     setDays(null);
-    fetch(`/api/week?start=${addDays(todayStr(), week * 7)}&service=${svc.id}`)
+    fetch(`/api/week?start=${addDays(todayStr(), week * 7)}&services=${partyKey}`)
       .then((r) => r.json())
       .then((j) => {
         if (!live) return;
@@ -53,19 +63,37 @@ export default function Booking({ categories, review = true, leadHours = 10, pol
       })
       .catch(() => live && setDays([]));
     return () => { live = false; };
-  }, [svc, week]);
+  }, [partyKey, week]);
 
   function pickService(s) {
-    jumped.current = false; setSvc(s); setSlot(null); setDate(null); setWeek(0); setStep(2);
+    if (adding) {
+      if (guest.trim().length < 2) { setError('Escribe el nombre de la persona.'); return; }
+      setParty([...party, { svc: s, guest: guest.trim() }]);
+      setAdding(false); setGuest('');
+    } else {
+      setParty([{ svc: s, guest: '' }]);
+    }
+    setError(''); jumped.current = false; setSlot(null); setDate(null); setWeek(0); setStep(2);
   }
-  const back = () => { setError(''); setStep((s) => Math.max(1, s - 1)); };
+  function removeGuest(i) {
+    setParty(party.filter((_, k) => k !== i));
+    setSlot(null); jumped.current = false;
+  }
+  const back = () => {
+    setError('');
+    if (adding) { setAdding(false); setGuest(''); setStep(2); return; }
+    setStep((x) => Math.max(1, x - 1));
+  };
 
   async function book() {
     setBusy(true); setError('');
     try {
       const r = await fetch('/api/book', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ service_id: svc.id, starts_at: slot.starts_at, name, phone, note }),
+        body: JSON.stringify({
+          items: party.map((x) => ({ service_id: x.svc.id, guest_name: x.guest })),
+          starts_at: slot.starts_at, name, phone, note,
+        }),
       });
       const j = await r.json();
       if (!r.ok) { setError(j.error); return; }
@@ -74,13 +102,23 @@ export default function Booking({ categories, review = true, leadHours = 10, pol
     finally { setBusy(false); }
   }
 
+  // Hora de cada persona, una tras otra desde la hora elegida
+  const plan = slot ? party.map((x, i) => {
+    const before = party.slice(0, i).reduce((n, y) => n + y.svc.duration_min, 0);
+    return { ...x, at: hmLocal(+new Date(slot.starts_at) + before * 60000) };
+  }) : [];
+
   if (done) {
     const link = `${typeof window !== 'undefined' ? window.location.origin : ''}/cita/${done.token}`;
-    const when = `${svc.name}, ${longDay(date)} a las ${slot.time}.`;
+    const when = party.length > 1 ? `${cap1(longDay(date))} a las ${slot.time}.` : `${svc.name}, ${longDay(date)} a las ${slot.time}.`;
+    const list = party.length > 1 && (
+      <ul className="plist">{plan.map((x, i) => <li key={i}><b>{x.guest || 'Tú'}</b> · {x.svc.name} · {x.at}</li>)}</ul>
+    );
     return done.status === 'pending' ? (
       <section>
         <h2>{done.open_now === false ? 'Recibimos tu solicitud' : 'El salón está revisando tu solicitud'}</h2>
         <p>{when}</p>
+        {list}
         {slot.early && <p className="note">* Incluye ${slot.fee} de recargo por horario temprano.</p>}
         <p>
           {done.open_now === false
@@ -96,6 +134,7 @@ export default function Booking({ categories, review = true, leadHours = 10, pol
       <section>
         <h2>Tu cita está confirmada</h2>
         <p>{when}</p>
+        {list}
         {slot.early && <p className="note">* Incluye ${slot.fee} de recargo por horario temprano.</p>}
         <p className="note">Puedes cambiarla o cancelarla antes del {deadlineText(slot.starts_at, policyHours)}.</p>
         <p>Guarda este enlace para ver, cambiar o cancelar tu cita:</p>
@@ -108,7 +147,7 @@ export default function Booking({ categories, review = true, leadHours = 10, pol
   const dayData = days?.find((d) => d.date === date);
   const noneAtAll = days && week === 1 && !days.some((d) => d.slots.length);
   const selCat = categories.find((c) => c.id === cat);
-  const total = svc ? +svc.price + (slot?.fee || 0) : 0;
+  const total = totalPrice + (slot?.fee || 0);
   const deadlinePassed = slot && +new Date(slot.starts_at) - policyHours * 3600000 < Date.now();
 
   return (
@@ -116,11 +155,19 @@ export default function Booking({ categories, review = true, leadHours = 10, pol
       <div className="steps" aria-label={`Paso ${step} de 4`}>
         {[1, 2, 3, 4].map((n) => <i key={n} className={n <= step ? 'on' : ''} />)}
       </div>
-      {step > 1 && <button className="back" onClick={back}>‹ Atrás</button>}
+      {(step > 1 || adding) && <button className="back" onClick={back}>‹ Atrás</button>}
 
       {step === 1 && (
         <section>
-          <h2>¿Qué te gustaría hacerte?</h2>
+          {adding ? (
+            <>
+              <h2>¿Para quién más?</h2>
+              <label>Nombre de la persona
+                <input value={guest} onChange={(e) => setGuest(e.target.value)} placeholder="Ej. Carlos, mi hijo Mateo…" autoFocus />
+              </label>
+              <h3>¿Qué servicio se hará?</h3>
+            </>
+          ) : <h2>¿Qué te gustaría hacerte?</h2>}
           <div className="tiles">
             {categories.map((c) => (
               <button key={c.id} className={'tile' + (cat === c.id ? ' on' : '')} onClick={() => setCat(cat === c.id ? null : c.id)}>
@@ -133,13 +180,25 @@ export default function Booking({ categories, review = true, leadHours = 10, pol
               <span>{s.name}</span><span>{dur(s.duration_min)} · ${s.price}</span>
             </button>
           ))}
+          {error && <p className="error">{error}</p>}
         </section>
       )}
 
       {step === 2 && svc && (
         <section>
           <h2>Elige día y hora</h2>
-          <p className="note">{svc.name} · {dur(svc.duration_min)}</p>
+          <div className="party">
+            {party.map((x, i) => (
+              <div className="pline" key={i}>
+                <span><b>{x.guest || 'Tú'}</b> · {x.svc.name} · {dur(x.svc.duration_min)}</span>
+                {i > 0 && <button className="x" onClick={() => removeGuest(i)} aria-label={`Quitar a ${x.guest}`}>×</button>}
+              </div>
+            ))}
+            {party.length > 1 && <div className="note">Se atienden una tras otra · {dur(totalMin)} en total</div>}
+            {party.length < MAX_PEOPLE && (
+              <button className="lnk" onClick={() => { setAdding(true); setCat(null); setStep(1); }}>＋ Agregar otra persona</button>
+            )}
+          </div>
           <div className="weekbar">
             <button className="ghost" disabled={week === 0} onClick={() => setWeek(0)} aria-label="Semana anterior">‹</button>
             <span className="cap">{monthOf(week0Start)}</span>
@@ -154,7 +213,7 @@ export default function Booking({ categories, review = true, leadHours = 10, pol
             ))}
           </div>
           {days === null && <p className="note">Buscando horarios…</p>}
-          {noneAtAll && <p className="note">No hay horarios en las próximas dos semanas. <a className="nb" href={`https://wa.me/${WHATSAPP}`}>Escríbenos por WhatsApp</a>.</p>}
+          {noneAtAll && <p className="note">No hay horarios en las próximas dos semanas{party.length > 1 ? ' para todas las personas juntas' : ''}. <a className="nb" href={`https://wa.me/${WHATSAPP}`}>Escríbenos por WhatsApp</a>.</p>}
           {dayData && (
             <>
               <h3 className="dayhead">{cap1(longDay(dayData.date))}</h3>
@@ -167,7 +226,7 @@ export default function Booking({ categories, review = true, leadHours = 10, pol
                 ))}
               </div>
               {dayData.slots.some((s) => s.early) && (
-                <p className="note">* Horario temprano con recargo de ${dayData.slots.find((s) => s.early).fee}.</p>
+                <p className="note">* Horario temprano con recargo de ${dayData.slots.find((s) => s.early).fee}{party.length > 1 ? ' en total' : ''}.</p>
               )}
             </>
           )}
@@ -178,7 +237,7 @@ export default function Booking({ categories, review = true, leadHours = 10, pol
       {step === 3 && slot && (
         <section>
           <h2>Tus datos</h2>
-          <label>Nombre<input value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" /></label>
+          <label>Tu nombre<input value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" /></label>
           <label>WhatsApp<input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" placeholder="09XXXXXXXX" autoComplete="tel" /></label>
           <button className="cta" disabled={name.trim().length < 2 || phone.replace(/\D/g, '').length < 9} onClick={() => setStep(4)}>Continuar</button>
         </section>
@@ -192,14 +251,19 @@ export default function Booking({ categories, review = true, leadHours = 10, pol
               <span className="ico">📅</span>
               <div>
                 <b>{cap1(longDay(date))}</b>
-                <small>{slot.time} · {dur(svc.duration_min)}</small>
+                <small>{slot.time} · {dur(totalMin)}</small>
                 <small>Total: ${total}{slot.early && ` (incluye $${slot.fee} de recargo por horario temprano)`}</small>
               </div>
             </div>
-            <div className="crow">
-              <span className="ico">✂️</span>
-              <div><b>{svc.name}</b><small>{categories.find((c) => c.services.some((x) => x.id === svc.id))?.name}</small></div>
-            </div>
+            {plan.map((x, i) => (
+              <div className="crow" key={i}>
+                <span className="ico">✂️</span>
+                <div>
+                  <b>{x.svc.name}</b>
+                  <small>{party.length > 1 ? `${x.guest || name.trim()} · ${x.at}` : categories.find((c) => c.services.some((y) => y.id === x.svc.id))?.name}</small>
+                </div>
+              </div>
+            ))}
             <div className="crow">
               <span className="ico">👤</span>
               <div><b>{name.trim()}</b><small>{phone.trim()}</small></div>

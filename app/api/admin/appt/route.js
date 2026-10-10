@@ -49,8 +49,11 @@ export async function POST(req) {
     const patch = action === 'confirm'
       ? { status: 'confirmed' }
       : { status: 'cancelled', cancelled_at: new Date().toISOString() };
-    const { data, error } = await db.from('appointments').update(patch)
-      .eq('id', id).eq('status', 'pending').select('id');
+    // Si la reserva fue para varias personas, se confirma o rechaza completa.
+    const { data: me } = await db.from('appointments').select('group_id').eq('id', id).maybeSingle();
+    let q0 = db.from('appointments').update(patch).eq('status', 'pending');
+    q0 = me?.group_id ? q0.eq('group_id', me.group_id) : q0.eq('id', id);
+    const { data, error } = await q0.select('id');
     if (error) return bad(BUSY, 409);
     if (!data?.length) return bad('Esta solicitud ya fue respondida o cancelada por la clienta.', 409);
     return Response.json({ ok: true });

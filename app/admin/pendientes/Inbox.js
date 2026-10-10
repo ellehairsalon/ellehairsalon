@@ -6,6 +6,7 @@ import { waLink, confirmText, rejectText } from '@/lib/wa';
 const when = (iso) => new Date(iso).toLocaleString('es-EC', {
   weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'America/Guayaquil',
 });
+const hmx = (iso) => new Date(iso).toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Guayaquil' });
 const ago = (iso) => {
   const m = Math.max(0, Math.round((Date.now() - +new Date(iso)) / 60000));
   return m < 60 ? `hace ${m} min` : m < 1440 ? `hace ${Math.round(m / 60)} h` : `hace ${Math.round(m / 1440)} d`;
@@ -45,7 +46,9 @@ export default function Inbox({ items, hours = 10 }) {
           <div className="bday" key={a.id} style={{ marginTop: 14 }}>
             <strong>{a.clients.full_name}</strong> <span className="note">· {a.clients.phone} · pidió {ago(a.created_at)}</span>
             <p style={{ margin: '6px 0' }}>
-              {a.services.name}<br />
+              {a.people?.length > 1
+                ? a.people.map((x, i) => <span key={i} style={{ display: 'block' }}><b>{x.guest_name || a.clients.full_name.split(' ')[0]}</b>: {x.services.name} · {hmx(x.starts_at)}</span>)
+                : <>{a.services.name}<br /></>}
               <b style={{ textTransform: 'capitalize' }}>{when(a.starts_at)}</b>
               {a.client_note && <><br /><span>📝 {a.client_note}</span></>}
               {a.early_fee > 0 && <><br /><span className="note">Incluye ${a.early_fee} de horario temprano</span></>}
@@ -69,7 +72,7 @@ export default function Inbox({ items, hours = 10 }) {
               <>
                 <p>✓ Confirmada. Falta avisarle a la clienta:</p>
                 <div className="actions">
-                  <a className="cta" style={{ textDecoration: 'none', textAlign: 'center', color: '#fff' }} href={waLink(a.clients.phone, confirmText(a, origin, hours))}
+                  <a className="cta" style={{ textDecoration: 'none', textAlign: 'center', color: '#fff' }} href={waLink(a.clients.phone, confirmText(a, origin, hours, a.people))}
                     onClick={() => setTimeout(() => setDone((d) => { const n = { ...d }; delete n[a.id]; return n; }), 600)}>Enviar confirmación por WhatsApp</a>
                 </div>
               </>
@@ -78,7 +81,7 @@ export default function Inbox({ items, hours = 10 }) {
               <>
                 <p>Solicitud rechazada. Falta avisarle a la clienta:</p>
                 <div className="actions">
-                  <a className="cta" style={{ textDecoration: 'none', textAlign: 'center', color: '#fff' }} href={waLink(a.clients.phone, rejectText(a, origin))}
+                  <a className="cta" style={{ textDecoration: 'none', textAlign: 'center', color: '#fff' }} href={waLink(a.clients.phone, rejectText(a, origin, a.people))}
                     onClick={() => setTimeout(() => setDone((d) => { const n = { ...d }; delete n[a.id]; return n; }), 600)}>Avisar por WhatsApp (proponer otra hora)</a>
                 </div>
               </>

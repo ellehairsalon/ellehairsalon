@@ -13,11 +13,11 @@ export async function GET(req) {
   const nowMs = Date.now();
   const date = new Date(nowMs - 5 * 3600000).toISOString().slice(0, 10);
   const { data } = await db.from('appointments')
-    .select('starts_at,checked_in_at,started_at,services(name,duration_min),stylists(name),clients(full_name)')
+    .select('starts_at,checked_in_at,started_at,guest_name,services(name,duration_min),stylists(name),clients(full_name)')
     .eq('status', 'confirmed').gte('starts_at', `${date}T00:00:00${TZ}`).lte('starts_at', `${date}T23:59:59${TZ}`)
     .order('starts_at');
   const list = data || [];
-  const row = (a) => ({ name: short(a.clients.full_name), service: a.services.name, stylist: a.stylists.name, starts_at: a.starts_at });
+  const row = (a) => ({ name: short(a.guest_name || a.clients.full_name), service: a.services.name, stylist: a.stylists.name, starts_at: a.starts_at });
 
   const inService = list.filter((a) => a.started_at).map((a) => ({
     ...row(a), startedAt: a.started_at,

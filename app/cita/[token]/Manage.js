@@ -87,7 +87,21 @@ export default function Manage({ token }) {
           <p className="note">Todavía no está confirmada. Te avisaremos por WhatsApp; esta página también se actualiza sola.</p>
         </>
       ) : <h2>Tu cita</h2>}
-      <p><strong>{a.service}</strong><br />{fmt(a.starts_at)}</p>
+      {a.items?.length > 1 ? (
+        <>
+          <p><strong style={{ textTransform: 'capitalize' }}>{fmt(a.starts_at)}</strong></p>
+          <div className="card">
+            {a.items.map((x, i) => (
+              <div className="crow" key={i}>
+                <div>
+                  <b>{x.guest_name || 'Tú'}</b>
+                  <small>{x.service} · {new Date(x.starts_at).toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Guayaquil' })}</small>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : <p><strong>{a.service}</strong><br />{fmt(a.starts_at)}</p>}
       <p className="note">Total: ${a.price}{a.early_fee > 0 && ` + $${a.early_fee} por horario temprano`}</p>
       {msg && <p className="error">{msg}</p>}
 

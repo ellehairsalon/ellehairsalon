@@ -80,7 +80,7 @@ export default function DayView({ appts, isToday, policyHours = 10 }) {
               background: colorOf(a.services.service_categories?.name),
             }}
             onClick={() => { setSel(a); setNote(a.notes || ''); }}>
-            <b>{a.clients.full_name}</b><span>{a.services.name} · {hm(a.starts_at)}</span>
+            <b>{a.guest_name || a.clients.full_name}</b><span>{a.services.name} · {hm(a.starts_at)}</span>
           </button>
         ))}
       </div>
@@ -95,7 +95,8 @@ export default function DayView({ appts, isToday, policyHours = 10 }) {
       {sel && (
         <div className="scrim" onClick={() => setSel(null)}>
           <div className="sheet" onClick={(e) => e.stopPropagation()}>
-            <h2>{sel.clients.full_name}</h2>
+            <h2>{sel.guest_name || sel.clients.full_name}</h2>
+            {sel.guest_name && <p className="note" style={{ marginTop: -4 }}>Reservó {sel.clients.full_name}</p>}
             <p>
               {sel.services.name} · {hm(sel.starts_at)} – {hm(sel.ends_at)}<br />
               {sel.stylists.name} · ${sel.price}{sel.early_fee > 0 && ` + $${sel.early_fee} horario temprano`}
@@ -124,7 +125,7 @@ export default function DayView({ appts, isToday, policyHours = 10 }) {
             )}
             {sel.status === 'confirmed' && (
               <div className="actions">
-                <a className="ghost" href={waLink(sel.clients.phone, confirmText(sel, window.location.origin, policyHours))}>Reenviar confirmación</a>
+                <a className="ghost" href={waLink(sel.clients.phone, confirmText(sel, window.location.origin, policyHours, sel.group_id ? appts.filter((x) => x.group_id === sel.group_id) : null))}>Reenviar confirmación</a>
               </div>
             )}
             {sel.status === 'confirmed' && (

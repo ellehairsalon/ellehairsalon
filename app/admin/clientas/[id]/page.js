@@ -15,7 +15,7 @@ export default async function Client({ params }) {
   const { data: c } = await db.from('clients').select('*').eq('id', id).maybeSingle();
   if (!c) return <main className="wide"><a href="/admin/clientas">‹ Clientas</a><p>No encontramos a esta clienta.</p></main>;
   const { data: visits } = await db.from('appointments')
-    .select('id,starts_at,status,price,early_fee,notes,services(name),stylists(name)')
+    .select('id,starts_at,status,price,early_fee,notes,guest_name,services(name),stylists(name)')
     .eq('client_id', id).order('starts_at', { ascending: false });
   const done = (visits || []).filter((v) => v.status === 'completed');
   const total = done.reduce((s, v) => s + Number(v.price) + Number(v.early_fee), 0);
@@ -36,7 +36,7 @@ export default async function Client({ params }) {
       {(visits || []).length === 0 && <p className="note">Todavía no tiene visitas.</p>}
       {(visits || []).map((v) => (
         <div className="appt" key={v.id}>
-          <strong>{v.services.name}</strong> · {v.stylists.name}
+          <strong>{v.services.name}</strong>{v.guest_name && ` (para ${v.guest_name})`} · {v.stylists.name}
           <div className="note">{when(v.starts_at)} · ${v.price}{v.early_fee > 0 && ` + $${v.early_fee}`} · {STATUS[v.status]}</div>
           {v.notes && <div style={{ whiteSpace: 'pre-wrap' }}>📝 {v.notes}</div>}
         </div>

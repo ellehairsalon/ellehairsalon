@@ -19,7 +19,7 @@ export default async function Week({ searchParams }) {
   const days = Array.from({ length: 7 }, (_, i) => shift(start, i));
 
   const [{ data }, { data: bd }] = await Promise.all([
-    db.from('appointments').select('starts_at,clients(full_name),services(name)')
+    db.from('appointments').select('starts_at,guest_name,clients(full_name),services(name)')
       .gte('starts_at', `${start}T00:00:00${TZ}`).lte('starts_at', `${days[6]}T23:59:59${TZ}`)
       .neq('status', 'cancelled').order('starts_at'),
     db.from('clients').select('full_name,birthday_month,birthday_day').not('birthday_month', 'is', null),
@@ -42,7 +42,7 @@ export default async function Week({ searchParams }) {
           <a key={d} href={`/admin?date=${d}`} className="appt" style={{ display: 'block', textDecoration: 'none', color: 'inherit' }}>
             <strong className="cap">{label(d)}</strong>{d === today() && ' · hoy'}
             <div className="note">{list.length ? `${list.length} ${list.length === 1 ? 'cita' : 'citas'} · ${hm(list[0].starts_at)} a ${hm(list[list.length - 1].starts_at)}` : 'Libre'}</div>
-            {list.slice(0, 3).map((a, i) => <div key={i}>{hm(a.starts_at)} · {a.clients.full_name} · {a.services.name}</div>)}
+            {list.slice(0, 3).map((a, i) => <div key={i}>{hm(a.starts_at)} · {a.guest_name || a.clients.full_name} · {a.services.name}</div>)}
             {list.length > 3 && <div className="note">y {list.length - 3} más…</div>}
             {cumple.length > 0 && <div>🎂 {cumple.map((c) => c.full_name).join(', ')}</div>}
           </a>
