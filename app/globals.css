@@ -166,3 +166,21 @@ a.nb { word-break:normal; }
 .x { background:none; border:0; font-size:1.4rem; line-height:1; color:var(--muted); cursor:pointer; padding:0 6px; }
 .party .lnk { margin-top:6px; color:var(--berry); }
 .plist { padding-left:18px; }
+
+/* Turno prioritario */
+:root { --amber:#b4620a; --amber-bg:#fff4e0; --amber-line:#f0c986; }
+.prio { margin-top:18px; padding:12px 14px 6px; background:var(--amber-bg); border:1px solid var(--amber-line); border-radius:16px; }
+.prio-head { display:flex; justify-content:space-between; align-items:center; gap:8px; color:var(--amber); }
+.prio-tag { padding:3px 10px; border-radius:999px; background:var(--amber); color:#fff; font-size:.8rem; font-weight:700; }
+.prio-note { margin:4px 0 2px; font-size:.85rem; color:#7a5a2e; }
+.chip.prio-chip { display:inline-flex; flex-direction:column; align-items:center; gap:0; padding:7px 14px; background:#fff; border-color:var(--amber-line); }
+.chip.prio-chip small { font-size:.72rem; font-weight:700; color:var(--amber); }
+.chip.prio-chip.on { background:var(--amber); border-color:var(--amber); color:#fff; }
+.chip.prio-chip.on small { color:#fff; }
+.pricebox { background:#fff; border:1px solid var(--line); border-radius:16px; padding:6px 16px; margin:12px 0; }
+.prow { display:flex; justify-content:space-between; gap:12px; padding:10px 0; }
+.prow + .prow { border-top:1px solid var(--line); }
+.prow small { display:block; color:var(--muted); font-size:.82rem; }
+.prow.prio-row { color:var(--amber); }
+.prow.prio-row small { color:#7a5a2e; }
+.prow.total { font-weight:700; font-size:1.05rem; }

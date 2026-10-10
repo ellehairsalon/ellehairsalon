@@ -20,7 +20,7 @@ export default function ScheduleEditor() {
   const setFee = (patch) => {
     const n = { ...cfg, ...patch };
     setCfg(n);
-    post({ kind: 'fee', early_fee_type: n.early_fee_type, early_fee_value: n.early_fee_value });
+    post({ kind: 'fee', early_fee_type: n.early_fee_type, early_fee_value: n.early_fee_value, early_bonus: n.early_bonus });
   };
   const setDay = (wd, patch) => {
     const n = hours.map((h) => (h.weekday === wd ? { ...h, ...patch } : h));
@@ -44,7 +44,8 @@ export default function ScheduleEditor() {
           )}
         </div>
       ))}
-      <h3>Recargo por horario temprano</h3>
+      <h3>Turno prioritario (horario temprano)</h3>
+      <p className="note">Los horarios antes de la apertura se muestran como "Turno prioritario", con el precio extra y lo que incluye.</p>
       <div className="svc-f">
         <label>Tipo
           <select value={cfg.early_fee_type} onChange={(e) => setFee({ early_fee_type: e.target.value })}>
@@ -53,6 +54,10 @@ export default function ScheduleEditor() {
         </label>
         <label>Valor<input type="number" defaultValue={cfg.early_fee_value} onBlur={(e) => setFee({ early_fee_value: e.target.value })} /></label>
       </div>
+      <label>Lo que incluye el turno prioritario
+        <input defaultValue={cfg.early_bonus || 'Lavado con masaje de cuero cabelludo'} maxLength={80}
+          onBlur={(e) => setFee({ early_bonus: e.target.value })} />
+      </label>
     </section>
   );
 }

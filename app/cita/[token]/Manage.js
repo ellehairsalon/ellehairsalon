@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { WHATSAPP } from '@/lib/config';
+import { PRIORITY_NAME, money } from '@/lib/priority';
 
 const days = Array.from({ length: 14 }, (_, i) =>
   new Date(Date.now() - 5 * 3600000 + i * 86400000).toISOString().slice(0, 10));
@@ -102,7 +103,13 @@ export default function Manage({ token }) {
           </div>
         </>
       ) : <p><strong>{a.service}</strong><br />{fmt(a.starts_at)}</p>}
-      <p className="note">Total: ${a.price}{a.early_fee > 0 && ` + $${a.early_fee} por horario temprano`}</p>
+      <div className="pricebox">
+        <div className="prow"><span>Servicios</span><span>{money(a.price)}</span></div>
+        {a.early_fee > 0 && (
+          <div className="prow prio-row"><span>🌅 {PRIORITY_NAME}<small>Incluye {d.bonus?.toLowerCase()}</small></span><span>+{money(a.early_fee)}</span></div>
+        )}
+        <div className="prow total"><span>Total</span><span>{money(+a.price + +a.early_fee)}</span></div>
+      </div>
       {msg && <p className="error">{msg}</p>}
 
       {mode === 'view' && (
@@ -164,12 +171,12 @@ export default function Manage({ token }) {
           {slots?.length === 0 && <p className="note">No hay horarios libres este día.</p>}
           <div className="grid">
             {slots?.map((s) => (
-              <button key={s.starts_at} className={'chip' + (slot?.starts_at === s.starts_at ? ' on' : '')} onClick={() => setSlot(s)}>
-                {s.time}{s.early && '*'}
+              <button key={s.starts_at} className={'chip' + (s.early ? ' prio-chip' : '') + (slot?.starts_at === s.starts_at ? ' on' : '')} onClick={() => setSlot(s)}>
+                {s.time}{s.early && <small>+{money(s.fee)}</small>}
               </button>
             ))}
           </div>
-          {slots?.some((s) => s.early) && <p className="note">* Horario temprano con recargo de ${slots.find((s) => s.early).fee}.</p>}
+          {slots?.some((s) => s.early) && <p className="note">🌅 {PRIORITY_NAME}: los horarios con precio extra incluyen {d.bonus?.toLowerCase()}.</p>}
           <div className="actions">
             <button className="cta" disabled={!slot || busy} onClick={() => act({ action: 'reschedule', starts_at: slot.starts_at })}>{pending ? 'Cambiar mi solicitud' : 'Mover mi cita'}</button>
             <button className="ghost" onClick={() => setMode('view')}>Volver</button>

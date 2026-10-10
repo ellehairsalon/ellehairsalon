@@ -19,7 +19,9 @@ export async function POST(req) {
   let q;
   if (b.kind === 'fee') {
     if (!['fixed', 'percent'].includes(b.early_fee_type) || !(+b.early_fee_value >= 0)) return bad();
-    q = db.from('salon_settings').update({ early_fee_type: b.early_fee_type, early_fee_value: +b.early_fee_value }).eq('id', 1);
+    const patch = { early_fee_type: b.early_fee_type, early_fee_value: +b.early_fee_value };
+    if (typeof b.early_bonus === 'string') patch.early_bonus = b.early_bonus.trim().slice(0, 80) || 'Lavado con masaje de cuero cabelludo';
+    q = db.from('salon_settings').update(patch).eq('id', 1);
   } else if (b.kind === 'booking') {
     const h = Math.round(+b.online_lead_hours);
     if (!['manual', 'mixed', 'auto'].includes(b.approval_mode) || !(h >= 0 && h <= 72)) return bad();

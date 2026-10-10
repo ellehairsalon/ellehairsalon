@@ -22,7 +22,7 @@ export default async function Admin({ searchParams }) {
       .gte('starts_at', `${date}T00:00:00${TZ}`).lte('starts_at', `${date}T23:59:59${TZ}`)
       .neq('status', 'cancelled').order('starts_at'),
     db.from('clients').select('id,full_name').eq('birthday_month', m).eq('birthday_day', d),
-    db.from('salon_settings').select('reschedule_min_hours').eq('id', 1).single(),
+    db.from('salon_settings').select('reschedule_min_hours,early_bonus').eq('id', 1).single(),
   ]);
   const hours = cfg?.reschedule_min_hours ?? 10;
   const label = new Date(date + 'T12:00:00Z')
@@ -37,7 +37,7 @@ export default async function Admin({ searchParams }) {
       </div>
       <h1 className="cap">{label}</h1>
       {bdays?.length > 0 && <p className="bday">🎂 Cumpleaños: {bdays.map((b) => b.full_name).join(', ')}</p>}
-      <DayView appts={data || []} isToday={date === today()} policyHours={hours} />
+      <DayView appts={data || []} isToday={date === today()} policyHours={hours} bonus={cfg?.early_bonus} />
       <NewAppt />
     </main>
   );

@@ -18,12 +18,12 @@ export default async function Pendientes() {
     const main = rows.find((r) => !r.guest_name) || rows[0];
     return { ...main, starts_at: rows[0].starts_at, early_fee: rows.reduce((n, r) => n + +r.early_fee, 0), people: rows };
   }).sort((x, y) => +new Date(x.starts_at) - +new Date(y.starts_at));
-  const { data: cfg } = await db.from('salon_settings').select('reschedule_min_hours').eq('id', 1).single();
+  const { data: cfg } = await db.from('salon_settings').select('reschedule_min_hours,early_bonus').eq('id', 1).single();
   return (
     <main className="wide">
       <h1>Por confirmar</h1>
       <p className="note">Solicitudes de clientas. Cada una ya aparta su horario en la agenda hasta que la respondas.</p>
-      <Inbox items={groups} hours={cfg?.reschedule_min_hours ?? 10} />
+      <Inbox items={groups} hours={cfg?.reschedule_min_hours ?? 10} bonus={cfg?.early_bonus} />
     </main>
   );
 }

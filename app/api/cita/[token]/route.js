@@ -25,6 +25,7 @@ export async function GET(req, { params }) {
   const live = group.filter((x) => ACTIVE.includes(x.status));
   const a = live[0] || group[0]; // la primera cita vigente marca la hora de la reserva
   const hours = await minHours();
+  const { data: pc } = await db.from('salon_settings').select('early_bonus').eq('id', 1).single();
   // Una solicitud en revisión se puede cambiar o cancelar libremente; una cita confirmada, hasta 'hours' antes.
   const canChange = a.status === 'pending' ? hoursLeft(a) > 0 : a.status === 'confirmed' && hoursLeft(a) >= hours;
   const date = new URL(req.url).searchParams.get('date');
@@ -39,7 +40,7 @@ export async function GET(req, { params }) {
       price: live.reduce((n, x) => n + +x.price, 0), early_fee: live.reduce((n, x) => n + +x.early_fee, 0),
       items: live.map((x) => ({ service: x.services.name, guest_name: x.guest_name, starts_at: x.starts_at, ends_at: x.ends_at })),
     },
-    canChange, hours, slots, deadline: +new Date(a.starts_at) - hours * 3600000,
+    canChange, hours, slots, bonus: pc?.early_bonus || 'Lavado con masaje de cuero cabelludo', deadline: +new Date(a.starts_at) - hours * 3600000,
     profile: { needs: !a.clients?.email || !a.clients?.birthday_month }, // ¿falta completar el perfil?
   });
 }

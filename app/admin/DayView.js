@@ -26,7 +26,7 @@ function layout(appts) {
   return out;
 }
 
-export default function DayView({ appts, isToday, policyHours = 10 }) {
+export default function DayView({ appts, isToday, policyHours = 10, bonus }) {
   const router = useRouter();
   const [sel, setSel] = useState(null);
   const [note, setNote] = useState('');
@@ -80,7 +80,7 @@ export default function DayView({ appts, isToday, policyHours = 10 }) {
               background: colorOf(a.services.service_categories?.name),
             }}
             onClick={() => { setSel(a); setNote(a.notes || ''); }}>
-            <b>{a.guest_name || a.clients.full_name}</b><span>{a.services.name} · {hm(a.starts_at)}</span>
+            <b>{a.early_fee > 0 && '🌅 '}{a.guest_name || a.clients.full_name}</b><span>{a.services.name} · {hm(a.starts_at)}</span>
           </button>
         ))}
       </div>
@@ -99,7 +99,7 @@ export default function DayView({ appts, isToday, policyHours = 10 }) {
             {sel.guest_name && <p className="note" style={{ marginTop: -4 }}>Reservó {sel.clients.full_name}</p>}
             <p>
               {sel.services.name} · {hm(sel.starts_at)} – {hm(sel.ends_at)}<br />
-              {sel.stylists.name} · ${sel.price}{sel.early_fee > 0 && ` + $${sel.early_fee} horario temprano`}
+              {sel.stylists.name} · ${sel.price}{sel.early_fee > 0 && ` + $${sel.early_fee} turno prioritario 🌅`}
               {STATUS[sel.status] && ` · ${STATUS[sel.status]}`}
               {sel.status === 'confirmed' && sel.started_at && ' · En atención'}
               {sel.status === 'confirmed' && !sel.started_at && sel.checked_in_at && ' · En espera'}
@@ -125,7 +125,7 @@ export default function DayView({ appts, isToday, policyHours = 10 }) {
             )}
             {sel.status === 'confirmed' && (
               <div className="actions">
-                <a className="ghost" href={waLink(sel.clients.phone, confirmText(sel, window.location.origin, policyHours, sel.group_id ? appts.filter((x) => x.group_id === sel.group_id) : null))}>Reenviar confirmación</a>
+                <a className="ghost" href={waLink(sel.clients.phone, confirmText(sel, window.location.origin, policyHours, sel.group_id ? appts.filter((x) => x.group_id === sel.group_id) : null, bonus))}>Reenviar confirmación</a>
               </div>
             )}
             {sel.status === 'confirmed' && (
