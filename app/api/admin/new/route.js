@@ -9,7 +9,7 @@ const normPhone = (raw) => {
   return d.length >= 11 && d.length <= 15 ? '+' + d : null;
 };
 const bad = (error, status) => Response.json({ error }, { status });
-const ACTIVE = 'No se pudo guardar. Si la clienta ya tiene otra cita pendiente, usa "Llegó" o "Empezar" en esa cita, o márcala como terminada o cancélala primero.';
+const ACTIVE = 'No se pudo guardar. Si el cliente ya tiene otra cita pendiente, usa "Llegó" o "Empezar" en esa cita, o márcala como terminada o cancélala primero.';
 
 async function findClient(p, n) {
   let { data: client } = await db.from('clients').select('id').eq('phone', p).maybeSingle();
@@ -23,7 +23,7 @@ export async function POST(req) {
   const p = normPhone(phone), n = String(name || '').trim();
   if (!p || n.length < 2) return bad('Revisa el nombre y el WhatsApp.', 400);
 
-  // Llegó sin cita y se atiende ya, aunque haya otra clienta en atención.
+  // Llegó sin cita y se atiende ya, aunque haya otro cliente en atención.
   if (start_now) {
     const { data: svc } = await db.from('services').select('*').eq('id', service_id).eq('is_active', true).single();
     if (!svc) return bad('Servicio no disponible.', 400);

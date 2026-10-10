@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 
 const MODES = [
   { id: 'manual', title: 'Yo confirmo cada solicitud', hint: 'Todas llegan a "Solicitudes" y tú las confirmas por WhatsApp.' },
-  { id: 'mixed', title: 'Mixto', hint: 'Se confirman solas; solo revisas las de horario temprano, servicios de 3 h o más y clientas nuevas.' },
+  { id: 'mixed', title: 'Mixto', hint: 'Se confirman solas; solo revisas las de horario temprano, servicios de 3 h o más y clientes nuevos.' },
   { id: 'auto', title: 'Confirmar automático', hint: 'La cita queda confirmada al instante, sin revisión.' },
 ];
 

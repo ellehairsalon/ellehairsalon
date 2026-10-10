@@ -35,7 +35,8 @@ export default async function Admin({ searchParams }) {
         <a href={`/admin?date=${today()}`}>Hoy</a>
         <a href={`/admin?date=${shift(date, 1)}`}>Siguiente ›</a>
       </div>
-      <h1 className="cap">{label}</h1>
+      <h1 className="dayh">{label.charAt(0).toUpperCase() + label.slice(1)}</h1>
+      <p className="sub-note">{(data || []).filter((x) => x.status !== 'pending').length} {(data || []).filter((x) => x.status !== 'pending').length === 1 ? 'cita' : 'citas'}{(data || []).some((x) => x.status === 'pending') && ` · ${(data || []).filter((x) => x.status === 'pending').length} por confirmar`}</p>
       {bdays?.length > 0 && <p className="bday">🎂 Cumpleaños: {bdays.map((b) => b.full_name).join(', ')}</p>}
       <DayView appts={data || []} isToday={date === today()} policyHours={hours} bonus={cfg?.early_bonus} />
       <NewAppt />

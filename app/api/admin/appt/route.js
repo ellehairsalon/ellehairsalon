@@ -55,7 +55,7 @@ export async function POST(req) {
     q0 = me?.group_id ? q0.eq('group_id', me.group_id) : q0.eq('id', id);
     const { data, error } = await q0.select('id');
     if (error) return bad(BUSY, 409);
-    if (!data?.length) return bad('Esta solicitud ya fue respondida o cancelada por la clienta.', 409);
+    if (!data?.length) return bad('Esta solicitud ya fue respondida o cancelada por el cliente.', 409);
     return Response.json({ ok: true });
   }
 

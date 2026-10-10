@@ -30,6 +30,6 @@ export async function POST(req) {
   }
 
   const { error } = await db.from('clients').update(patch).eq('id', b.id);
-  if (error) return error.code === '23505' ? bad('Ese WhatsApp ya pertenece a otra clienta.', 409) : bad('No se pudo guardar.', 500);
+  if (error) return error.code === '23505' ? bad('Ese WhatsApp ya pertenece a otro cliente.', 409) : bad('No se pudo guardar.', 500);
   return Response.json({ ok: true });
 }

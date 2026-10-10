@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { db } from '@/lib/slots';
 import { isAdmin } from '@/lib/admin';
 import ClientForm from '../ClientForm';
+import { svcEmoji } from '@/lib/emoji';
 
 export const dynamic = 'force-dynamic';
 const STATUS = { pending: 'Por confirmar', confirmed: 'Confirmada', completed: 'Completada', cancelled: 'Cancelada', no_show: 'No vino' };
@@ -13,7 +14,7 @@ export default async function Client({ params }) {
   if (!(await isAdmin())) redirect('/admin/login');
   const { id } = await params;
   const { data: c } = await db.from('clients').select('*').eq('id', id).maybeSingle();
-  if (!c) return <main className="wide"><a href="/admin/clientas">‹ Clientas</a><p>No encontramos a esta clienta.</p></main>;
+  if (!c) return <main className="wide"><a href="/admin/clientas">‹ Clientes</a><p>No encontramos a este cliente.</p></main>;
   const { data: visits } = await db.from('appointments')
     .select('id,starts_at,status,price,early_fee,notes,guest_name,services(name),stylists(name)')
     .eq('client_id', id).order('starts_at', { ascending: false });
@@ -22,12 +23,19 @@ export default async function Client({ params }) {
 
   return (
     <main className="wide">
-      <a href="/admin/clientas">‹ Clientas</a>
-      <h1>{c.full_name}</h1>
-      <p className="note">
-        {done.length} {done.length === 1 ? 'visita completada' : 'visitas completadas'} · ${total.toFixed(2)} en total ·{' '}
-        <a href={`https://wa.me/${c.phone.replace(/\D/g, '')}`}>Escribir por WhatsApp</a>
-      </p>
+      <a className="backlink" href="/admin/clientas">‹ Clientes</a>
+      <div className="profile">
+        <span className="avatar big">{c.full_name.trim().split(/\s+/).slice(0, 2).map((x) => x[0]?.toUpperCase()).join('')}</span>
+        <div>
+          <h1>{c.full_name}</h1>
+          <a className="pill-link" href={`https://wa.me/${c.phone.replace(/\D/g, '')}`}>💬 {c.phone}</a>
+        </div>
+      </div>
+      <div className="stats">
+        <div><b>{done.length}</b><small>{done.length === 1 ? 'visita' : 'visitas'}</small></div>
+        <div><b>${total.toFixed(0)}</b><small>en total</small></div>
+        <div><b>{(visits || []).filter((v) => v.status === 'no_show').length}</b><small>no vino</small></div>
+      </div>
       <ClientForm client={{
         id: c.id, full_name: c.full_name, phone: c.phone, email: c.email, cedula: c.cedula,
         birthday_month: c.birthday_month, birthday_day: c.birthday_day, internal_notes: c.internal_notes,
@@ -36,7 +44,7 @@ export default async function Client({ params }) {
       {(visits || []).length === 0 && <p className="note">Todavía no tiene visitas.</p>}
       {(visits || []).map((v) => (
         <div className="appt" key={v.id}>
-          <strong>{v.services.name}</strong>{v.guest_name && ` (para ${v.guest_name})`} · {v.stylists.name}
+          <strong>{svcEmoji(v.services.name)} {v.services.name}</strong>{v.guest_name && ` (para ${v.guest_name})`} · {v.stylists.name}
           <div className="note">{when(v.starts_at)} · ${v.price}{v.early_fee > 0 && ` + $${v.early_fee}`} · {STATUS[v.status]}</div>
           {v.notes && <div style={{ whiteSpace: 'pre-wrap' }}>📝 {v.notes}</div>}
         </div>

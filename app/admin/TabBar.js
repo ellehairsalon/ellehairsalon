@@ -5,7 +5,7 @@ const tabs = [
   { href: '/admin', label: 'Hoy', icon: '📅' },
   { href: '/admin/pendientes', label: 'Solicitudes', icon: '📥' },
   { href: '/admin/semana', label: 'Semana', icon: '🗓️' },
-  { href: '/admin/clientas', label: 'Clientas', icon: '👤' },
+  { href: '/admin/clientas', label: 'Clientes', icon: '👤' },
   { href: '/admin/ajustes', label: 'Ajustes', icon: '⚙️' },
 ];
 

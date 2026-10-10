@@ -31,18 +31,22 @@ export default async function Clients({ searchParams }) {
 
   return (
     <main className="wide">
-      <h1>Clientas</h1>
+      <h1>Clientes</h1>
       {soon.length > 0 && (
         <p className="bday">🎂 Esta semana: {soon.map(({ c, hit }) =>
           `${c.full_name} (${hit.i === 0 ? 'hoy' : hit.i === 1 ? 'mañana' : `${hit.d} de ${MES[hit.m - 1]}`})`).join(', ')}</p>
       )}
-      <form><input name="q" defaultValue={q} placeholder="Buscar por nombre, teléfono, correo o cédula" /></form>
-      {(data || []).map((c) => (
-        <a key={c.id} className="row" href={`/admin/clientas/${c.id}`}>
-          <span>{c.full_name}{c.email && <small className="note"> · {c.email}</small>}</span><span>{c.phone}</span>
-        </a>
-      ))}
-      {data?.length === 0 && <p className="note">No encontramos clientas con esa búsqueda.</p>}
+      <form className="search"><span>🔍</span><input name="q" defaultValue={q} placeholder="Buscar por nombre, teléfono, correo o cédula" /></form>
+      <div className="list">
+        {(data || []).map((c) => (
+          <a key={c.id} className="li" href={`/admin/clientas/${c.id}`}>
+            <span className="avatar">{c.full_name.trim().split(/\s+/).slice(0, 2).map((x) => x[0]?.toUpperCase()).join('')}</span>
+            <span className="li-main"><b>{c.full_name}</b><small>{c.phone}{c.email && ` · ${c.email}`}</small></span>
+            <span className="chev">›</span>
+          </a>
+        ))}
+      </div>
+      {data?.length === 0 && <div className="empty"><div className="empty-ico">🔎</div><b>Sin resultados</b><span>No encontramos clientes con esa búsqueda.</span></div>}
     </main>
   );
 }

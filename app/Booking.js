@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { WHATSAPP } from '@/lib/config';
 import { PRIORITY_NAME, DEFAULT_BONUS, money, feeTag } from '@/lib/priority';
+import { svcEmoji } from '@/lib/emoji';
 
 const TZ = 'America/Guayaquil';
 const todayStr = () => new Date(Date.now() - 5 * 3600000).toISOString().slice(0, 10);
@@ -109,37 +110,65 @@ export default function Booking({ categories, review = true, leadHours = 10, pol
     return { ...x, at: hmLocal(+new Date(slot.starts_at) + before * 60000) };
   }) : [];
 
+  const total = totalPrice + (slot?.fee || 0);
   if (done) {
     const link = `${typeof window !== 'undefined' ? window.location.origin : ''}/cita/${done.token}`;
-    const when = party.length > 1 ? `${cap1(longDay(date))} a las ${slot.time}.` : `${svc.name}, ${longDay(date)} a las ${slot.time}.`;
-    const list = party.length > 1 && (
-      <ul className="plist">{plan.map((x, i) => <li key={i}><b>{x.guest || 'Tú'}</b> · {x.svc.name} · {x.at}</li>)}</ul>
-    );
-    return done.status === 'pending' ? (
-      <section>
-        <h2>{done.open_now === false ? 'Recibimos tu solicitud' : 'El salón está revisando tu solicitud'}</h2>
-        <p>{when}</p>
-        {list}
-        {slot.early && <p className="note">🌅 {PRIORITY_NAME} ({money(slot.fee)}): incluye {priority.bonus.toLowerCase()}.</p>}
-        <p>
-          {done.open_now === false
-            ? `Elena la revisará ${done.opens} y te confirmará por WhatsApp.`
-            : 'Te confirmaremos por WhatsApp en cuanto la revisemos.'}
-          {' '}Tu cita todavía no está confirmada.
+    const pending = done.status === 'pending';
+    const catOf = (id) => categories.find((c) => c.services.some((y) => y.id === id))?.name;
+    return (
+      <section className="done">
+        <div className={'seal' + (pending ? ' wait' : '')} aria-hidden="true">
+          {pending ? (
+            <svg viewBox="0 0 48 48" width="44" height="44" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="24" cy="24" r="17" /><path d="M24 14v10l7 4" />
+            </svg>
+          ) : (
+            <svg viewBox="0 0 48 48" width="44" height="44" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M13 25l8 8 14-17" />
+            </svg>
+          )}
+        </div>
+        <h2>{pending ? (done.open_now === false ? 'Recibimos tu solicitud' : 'Estamos revisando tu solicitud') : 'Tu cita está confirmada'}</h2>
+        <p className="lead">
+          {pending
+            ? (done.open_now === false
+                ? `Elena la revisará ${done.opens} y te confirmará por WhatsApp.`
+                : 'El salón la revisará y te confirmará por WhatsApp en breve.')
+            : 'Te esperamos en Elle Hair Salon.'}
         </p>
-        <p>Con este enlace puedes ver el estado de tu solicitud, cambiarla o cancelarla:</p>
-        <p><a href={link}>{link}</a></p>
-        <p className="note">Guárdalo: se actualiza solo cuando el salón confirme.</p>
-      </section>
-    ) : (
-      <section>
-        <h2>Tu cita está confirmada</h2>
-        <p>{when}</p>
-        {list}
-        {slot.early && <p className="note">🌅 {PRIORITY_NAME} ({money(slot.fee)}): incluye {priority.bonus.toLowerCase()}.</p>}
-        <p className="note">Puedes cambiarla o cancelarla antes del {deadlineText(slot.starts_at, policyHours)}.</p>
-        <p>Guarda este enlace para ver, cambiar o cancelar tu cita:</p>
-        <p><a href={link}>{link}</a></p>
+
+        <div className="ticket">
+          <div className="t-top">
+            <div className="t-date">{cap1(longDay(date))}</div>
+            <div className="t-time">{slot.time}</div>
+          </div>
+          <div className="t-body">
+            {plan.map((x, i) => (
+              <div className="t-line" key={i}>
+                <span className="t-emo">{svcEmoji(x.svc.name, catOf(x.svc.id))}</span>
+                <span className="t-name">{x.svc.name}{party.length > 1 && <small>{x.guest || name.trim()} · {x.at}</small>}</span>
+                <span>{money(x.svc.price)}</span>
+              </div>
+            ))}
+            {slot.early && (
+              <div className="t-line prio-row">
+                <span className="t-emo">🌅</span>
+                <span className="t-name">{PRIORITY_NAME}<small>Incluye {priority.bonus.toLowerCase()}</small></span>
+                <span>+{money(slot.fee)}</span>
+              </div>
+            )}
+          </div>
+          <div className="t-total"><span>Total</span><span>{money(total)}</span></div>
+        </div>
+
+        {pending ? (
+          <p className="note center">Tu cita se confirma cuando recibas nuestro mensaje de WhatsApp al {phone.trim()}.</p>
+        ) : (
+          <>
+            <a className="cta linkbtn" href={link}>Ver o cambiar mi cita</a>
+            <p className="note center">Puedes cambiarla o cancelarla antes del {deadlineText(slot.starts_at, policyHours)}.</p>
+          </>
+        )}
       </section>
     );
   }
@@ -148,7 +177,6 @@ export default function Booking({ categories, review = true, leadHours = 10, pol
   const dayData = days?.find((d) => d.date === date);
   const noneAtAll = days && week === 1 && !days.some((d) => d.slots.length);
   const selCat = categories.find((c) => c.id === cat);
-  const total = totalPrice + (slot?.fee || 0);
   const deadlinePassed = slot && +new Date(slot.starts_at) - policyHours * 3600000 < Date.now();
 
   return (
@@ -178,7 +206,7 @@ export default function Booking({ categories, review = true, leadHours = 10, pol
           </div>
           {selCat && selCat.services.map((s) => (
             <button key={s.id} className="row" onClick={() => pickService(s)}>
-              <span>{s.name}</span><span>{dur(s.duration_min)} · ${s.price}</span>
+              <span><span className="semo">{svcEmoji(s.name, selCat.name)}</span>{s.name}</span><span>{dur(s.duration_min)} · ${s.price}</span>
             </button>
           ))}
           {error && <p className="error">{error}</p>}
@@ -271,7 +299,7 @@ export default function Booking({ categories, review = true, leadHours = 10, pol
             </div>
             {plan.map((x, i) => (
               <div className="crow" key={i}>
-                <span className="ico">✂️</span>
+                <span className="ico">{svcEmoji(x.svc.name, categories.find((c) => c.services.some((y) => y.id === x.svc.id))?.name)}</span>
                 <div>
                   <b>{x.svc.name}</b>
                   <small>{party.length > 1 ? `${x.guest || name.trim()} · ${x.at}` : categories.find((c) => c.services.some((y) => y.id === x.svc.id))?.name}</small>

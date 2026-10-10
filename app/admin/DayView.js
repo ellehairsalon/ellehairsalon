@@ -2,10 +2,11 @@
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { waLink, confirmText } from '@/lib/wa';
+import { svcEmoji } from '@/lib/emoji';
 
 const PX = 64; // 64 px por hora
 const min = (iso) => { const t = new Date(+new Date(iso) - 5 * 3600000); return t.getUTCHours() * 60 + t.getUTCMinutes(); };
-const hm = (iso) => new Date(iso).toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Guayaquil' });
+const hm = (iso) => new Date(iso).toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Guayaquil' });
 const longDate = (iso) => new Date(iso).toLocaleDateString('es-EC', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'America/Guayaquil' });
 const COLORS = ['#f3d9e4', '#dfe8f6', '#e1efe3', '#f6ecd2', '#e7ddf3'];
 const colorOf = (n = '') => COLORS[[...n].reduce((a, c) => a + c.charCodeAt(0), 0) % COLORS.length];
@@ -80,7 +81,7 @@ export default function DayView({ appts, isToday, policyHours = 10, bonus }) {
               background: colorOf(a.services.service_categories?.name),
             }}
             onClick={() => { setSel(a); setNote(a.notes || ''); }}>
-            <b>{a.early_fee > 0 && '🌅 '}{a.guest_name || a.clients.full_name}</b><span>{a.services.name} · {hm(a.starts_at)}</span>
+            <b>{a.guest_name || a.clients.full_name}{a.early_fee > 0 && ' 🌅'}</b><span>{svcEmoji(a.services.name, a.services.service_categories?.name)} {a.services.name} · {hm(a.starts_at)}</span>
           </button>
         ))}
       </div>
@@ -95,7 +96,7 @@ export default function DayView({ appts, isToday, policyHours = 10, bonus }) {
       {sel && (
         <div className="scrim" onClick={() => setSel(null)}>
           <div className="sheet" onClick={(e) => e.stopPropagation()}>
-            <h2>{sel.guest_name || sel.clients.full_name}</h2>
+            <h2>{svcEmoji(sel.services.name, sel.services.service_categories?.name)} {sel.guest_name || sel.clients.full_name}</h2>
             {sel.guest_name && <p className="note" style={{ marginTop: -4 }}>Reservó {sel.clients.full_name}</p>}
             <p>
               {sel.services.name} · {hm(sel.starts_at)} – {hm(sel.ends_at)}<br />
@@ -104,9 +105,9 @@ export default function DayView({ appts, isToday, policyHours = 10, bonus }) {
               {sel.status === 'confirmed' && sel.started_at && ' · En atención'}
               {sel.status === 'confirmed' && !sel.started_at && sel.checked_in_at && ' · En espera'}
             </p>
-            {sel.client_note && <div className="bday" style={{ whiteSpace: 'pre-wrap' }}><b>📝 Nota de la clienta:</b> {sel.client_note}</div>}
+            {sel.client_note && <div className="bday" style={{ whiteSpace: 'pre-wrap' }}><b>📝 Nota del cliente:</b> {sel.client_note}</div>}
             {sel.clients.internal_notes && (
-              <div className="bday" style={{ whiteSpace: 'pre-wrap' }}><b>Nota de la clienta:</b> {sel.clients.internal_notes}</div>
+              <div className="bday" style={{ whiteSpace: 'pre-wrap' }}><b>Nota del cliente:</b> {sel.clients.internal_notes}</div>
             )}
             <div className="actions">
               <a className="ghost" href={`https://wa.me/${sel.clients.phone.replace(/\D/g, '')}`}>WhatsApp</a>

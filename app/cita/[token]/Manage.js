@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { WHATSAPP } from '@/lib/config';
 import { PRIORITY_NAME, money } from '@/lib/priority';
+import { svcEmoji } from '@/lib/emoji';
 
 const days = Array.from({ length: 14 }, (_, i) =>
   new Date(Date.now() - 5 * 3600000 + i * 86400000).toISOString().slice(0, 10));
@@ -76,39 +77,41 @@ export default function Manage({ token }) {
   if (a.status === 'cancelled') return (
     <section><h2>Cita cancelada</h2><p>Tu cita fue cancelada. <a href="/">Agendar una nueva</a></p></section>
   );
-  if (a.status !== 'confirmed') return (
+  if (!['confirmed', 'pending'].includes(a.status)) return (
     <section><h2>Esta cita ya finalizó</h2><p><a href="/">Agendar una nueva</a></p></section>
   );
 
+  const hmx = (iso) => new Date(iso).toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Guayaquil' });
+  const day = new Date(a.starts_at).toLocaleDateString('es-EC', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'America/Guayaquil' });
+  const items = a.items?.length ? a.items : [{ service: a.service, guest_name: null, starts_at: a.starts_at }];
+
   return (
-    <section>
-      {pending ? (
-        <>
-          <h2>El salón está revisando tu solicitud</h2>
-          <p className="note">Todavía no está confirmada. Te avisaremos por WhatsApp; esta página también se actualiza sola.</p>
-        </>
-      ) : <h2>Tu cita</h2>}
-      {a.items?.length > 1 ? (
-        <>
-          <p><strong style={{ textTransform: 'capitalize' }}>{fmt(a.starts_at)}</strong></p>
-          <div className="card">
-            {a.items.map((x, i) => (
-              <div className="crow" key={i}>
-                <div>
-                  <b>{x.guest_name || 'Tú'}</b>
-                  <small>{x.service} · {new Date(x.starts_at).toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Guayaquil' })}</small>
-                </div>
-              </div>
-            ))}
-          </div>
-        </>
-      ) : <p><strong>{a.service}</strong><br />{fmt(a.starts_at)}</p>}
-      <div className="pricebox">
-        <div className="prow"><span>Servicios</span><span>{money(a.price)}</span></div>
-        {a.early_fee > 0 && (
-          <div className="prow prio-row"><span>🌅 {PRIORITY_NAME}<small>Incluye {d.bonus?.toLowerCase()}</small></span><span>+{money(a.early_fee)}</span></div>
-        )}
-        <div className="prow total"><span>Total</span><span>{money(+a.price + +a.early_fee)}</span></div>
+    <section className="done left">
+      <span className={'badge-st' + (pending ? ' wait' : '')}>{pending ? '⏳ Por confirmar' : '✓ Confirmada'}</span>
+      <h2>{pending ? 'El salón está revisando tu solicitud' : 'Tu cita'}</h2>
+      {pending && <p className="note">Todavía no está confirmada. Te avisaremos por WhatsApp; esta página también se actualiza sola.</p>}
+
+      <div className="ticket">
+        <div className="t-top">
+          <div className="t-date">{day.charAt(0).toUpperCase() + day.slice(1)}</div>
+          <div className="t-time">{hmx(a.starts_at)}</div>
+        </div>
+        <div className="t-body">
+          {items.map((x, i) => (
+            <div className="t-line" key={i}>
+              <span className="t-emo">{svcEmoji(x.service)}</span>
+              <span className="t-name">{x.service}{items.length > 1 && <small>{x.guest_name || 'Tú'} · {hmx(x.starts_at)}</small>}</span>
+            </div>
+          ))}
+          {a.early_fee > 0 && (
+            <div className="t-line prio-row">
+              <span className="t-emo">🌅</span>
+              <span className="t-name">{PRIORITY_NAME}<small>Incluye {d.bonus?.toLowerCase()}</small></span>
+              <span>+{money(a.early_fee)}</span>
+            </div>
+          )}
+        </div>
+        <div className="t-total"><span>Total</span><span>{money(+a.price + +a.early_fee)}</span></div>
       </div>
       {msg && <p className="error">{msg}</p>}
 

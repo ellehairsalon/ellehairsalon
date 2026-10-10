@@ -46,7 +46,7 @@ export default function ClientForm({ client }) {
           </select>
         </div>
       </label>
-      <label>Notas fijas de la clienta (medidas, fórmula del tinte, preferencias)
+      <label>Notas fijas del cliente (medidas, fórmula del tinte, preferencias)
         <textarea rows={5} value={f.internal_notes} onChange={set('internal_notes')}
           style={{ display: 'block', width: '100%', marginTop: 4, padding: 10, border: '1px solid var(--line)', background: '#fff', font: 'inherit', color: 'var(--ink)' }} />
       </label>
