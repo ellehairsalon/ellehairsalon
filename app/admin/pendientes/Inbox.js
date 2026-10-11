@@ -52,7 +52,6 @@ export default function Inbox({ items, hours = 10, bonus }) {
       {shown.map((a) => {
         const st = done[a.id]?.state;
         const people = a.people || [a];
-        const total = people.reduce((n, x) => n + +x.price + +x.early_fee, 0);
         return (
           <div className={'req' + (st ? ' ' + st : '')} key={a.id}>
             <div className="req-head">
@@ -78,10 +77,8 @@ export default function Inbox({ items, hours = 10, bonus }) {
                     <b>{x.services.name}</b>
                     <small>{people.length > 1 ? `${x.guest_name || a.clients.full_name.split(' ')[0]} · ${hmx(x.starts_at)} · ` : ''}{dur(x.services.duration_min)}</small>
                   </div>
-                  <span className="price">{money(x.price)}</span>
                 </div>
               ))}
-              <div className="req-total"><span>Total</span><b>{money(total)}</b></div>
             </div>
 
             {a.client_note && <div className="req-note">📝 {a.client_note}</div>}

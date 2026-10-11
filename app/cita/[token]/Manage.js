@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { WHATSAPP } from '@/lib/config';
-import { PRIORITY_NAME, money } from '@/lib/priority';
+import { PRIORITY_NAME, money, priceLabel } from '@/lib/priority';
 import { svcEmoji } from '@/lib/emoji';
 
 const days = Array.from({ length: 14 }, (_, i) =>
@@ -101,6 +101,7 @@ export default function Manage({ token }) {
             <div className="t-line" key={i}>
               <span className="t-emo">{svcEmoji(x.service)}</span>
               <span className="t-name">{x.service}{items.length > 1 && <small>{x.guest_name || 'Tú'} · {hmx(x.starts_at)}</small>}</span>
+              <span>{priceLabel(x.price, x.price_from)}</span>
             </div>
           ))}
           {a.early_fee > 0 && (
@@ -111,7 +112,7 @@ export default function Manage({ token }) {
             </div>
           )}
         </div>
-        <div className="t-total"><span>Total</span><span>{money(+a.price + +a.early_fee)}</span></div>
+        <div className="t-total"><span>Precio final</span><span>Lo confirma Elena en el salón</span></div>
       </div>
       {msg && <p className="error">{msg}</p>}
 

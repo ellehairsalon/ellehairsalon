@@ -26,7 +26,7 @@ export default function ServicesEditor() {
     const f = draft[category_id] || {};
     const r = await fetch('/api/admin/services', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ create: true, category_id, name: f.name, price: f.price, duration_min: f.min }),
+      body: JSON.stringify({ create: true, category_id, name: f.name, duration_min: f.min }),
     });
     const j = await r.json();
     setMsg(r.ok ? 'Servicio agregado ✓' : j.error || 'No se pudo guardar');
@@ -44,7 +44,8 @@ export default function ServicesEditor() {
             <div className="svc" key={s.id}>
               <input defaultValue={s.name} style={{ fontWeight: 600 }} onBlur={(e) => e.target.value.trim() !== s.name && save(s.id, { name: e.target.value })} />
               <div className="svc-f">
-                <label>Precio $<input type="number" defaultValue={s.price} onBlur={(e) => save(s.id, { price: e.target.value })} /></label>
+                <label>Precio $<input type="number" step="0.5" defaultValue={+s.price || ''} placeholder="sin precio" onBlur={(e) => save(s.id, { price: e.target.value === '' ? 0 : e.target.value })} /></label>
+                <label className="chk"><input type="checkbox" defaultChecked={s.price_from} onChange={(e) => save(s.id, { price_from: e.target.checked })} />"Desde"</label>
                 <label>Minutos<input type="number" defaultValue={s.duration_min} onBlur={(e) => save(s.id, { duration_min: e.target.value })} /></label>
                 <label className="chk"><input type="checkbox" defaultChecked={s.is_active} onChange={(e) => save(s.id, { is_active: e.target.checked })} />Disponible</label>
               </div>
@@ -54,7 +55,6 @@ export default function ServicesEditor() {
             <strong>Agregar a {name}</strong>
             <div className="svc-f">
               <label>Nombre<input value={draft[cid]?.name || ''} onChange={(e) => setF(cid, { name: e.target.value })} /></label>
-              <label>Precio $<input type="number" value={draft[cid]?.price || ''} onChange={(e) => setF(cid, { price: e.target.value })} /></label>
               <label>Minutos<input type="number" value={draft[cid]?.min || ''} onChange={(e) => setF(cid, { min: e.target.value })} /></label>
             </div>
             <button className="ghost" style={{ marginTop: 8 }} onClick={() => add(cid)}>Agregar servicio</button>

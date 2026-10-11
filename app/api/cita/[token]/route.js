@@ -1,7 +1,7 @@
 import { db, getGroupSlots, earlyFeeFor } from '@/lib/slots';
 import { validEmail, validBirthday } from '@/lib/validate';
 
-const SEL = 'id,client_id,service_id,starts_at,ends_at,price,early_fee,status,group_id,guest_name,services(name,duration_min),clients(full_name,email,birthday_month,birthday_day)';
+const SEL = 'id,client_id,service_id,starts_at,ends_at,price,early_fee,status,group_id,guest_name,services(name,duration_min,price_from),clients(full_name,email,birthday_month,birthday_day)';
 const bad = (error, status) => Response.json({ error }, { status });
 const hoursLeft = (a) => (+new Date(a.starts_at) - Date.now()) / 3600000;
 const minHours = async () =>
@@ -38,7 +38,7 @@ export async function GET(req, { params }) {
     appt: {
       service: a.services.name, starts_at: a.starts_at, status: a.status,
       price: live.reduce((n, x) => n + +x.price, 0), early_fee: live.reduce((n, x) => n + +x.early_fee, 0),
-      items: live.map((x) => ({ service: x.services.name, guest_name: x.guest_name, starts_at: x.starts_at, ends_at: x.ends_at })),
+      items: live.map((x) => ({ service: x.services.name, price: +x.price, price_from: !!x.services.price_from, guest_name: x.guest_name, starts_at: x.starts_at, ends_at: x.ends_at })),
     },
     canChange, hours, slots, bonus: pc?.early_bonus || 'Lavado con masaje de cuero cabelludo', deadline: +new Date(a.starts_at) - hours * 3600000,
     profile: { needs: !a.clients?.email || !a.clients?.birthday_month }, // ¿falta completar el perfil?

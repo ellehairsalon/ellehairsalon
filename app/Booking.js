@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { WHATSAPP } from '@/lib/config';
-import { PRIORITY_NAME, DEFAULT_BONUS, money, feeTag } from '@/lib/priority';
+import { PRIORITY_NAME, DEFAULT_BONUS, money, feeTag, priceLabel } from '@/lib/priority';
 import { svcEmoji } from '@/lib/emoji';
 
 const TZ = 'America/Guayaquil';
@@ -24,7 +24,7 @@ const deadlineShort = (iso, hours) => new Date(+new Date(iso) - hours * 3600000)
 const hmLocal = (ms) => new Date(ms).toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: TZ });
 const MAX_PEOPLE = 5;
 
-export default function Booking({ categories, review = true, leadHours = 10, policyHours = 10, priority = { type: 'fixed', value: 5, bonus: DEFAULT_BONUS } }) {
+export default function Booking({ showPrices = false, categories, review = true, leadHours = 10, policyHours = 10, priority = { type: 'fixed', value: 5, bonus: DEFAULT_BONUS } }) {
   const [step, setStep] = useState(1);
   const [cat, setCat] = useState(null);
   const [party, setParty] = useState([]); // [{ svc, guest }]: la primera persona es quien reserva
@@ -45,7 +45,7 @@ export default function Booking({ categories, review = true, leadHours = 10, pol
 
   const partyKey = party.map((x) => x.svc.id).join(',');
   const totalMin = party.reduce((n, x) => n + x.svc.duration_min, 0);
-  const totalPrice = party.reduce((n, x) => n + +x.svc.price, 0);
+  
   const svc = party[0]?.svc;
 
   // Carga la semana: al elegir servicios o al moverse con ‹ ›. Si la primera semana está llena, salta a la siguiente.
@@ -110,7 +110,7 @@ export default function Booking({ categories, review = true, leadHours = 10, pol
     return { ...x, at: hmLocal(+new Date(slot.starts_at) + before * 60000) };
   }) : [];
 
-  const total = totalPrice + (slot?.fee || 0);
+  
   if (done) {
     const link = `${typeof window !== 'undefined' ? window.location.origin : ''}/cita/${done.token}`;
     const pending = done.status === 'pending';
@@ -147,7 +147,7 @@ export default function Booking({ categories, review = true, leadHours = 10, pol
               <div className="t-line" key={i}>
                 <span className="t-emo">{svcEmoji(x.svc.name, catOf(x.svc.id))}</span>
                 <span className="t-name">{x.svc.name}{party.length > 1 && <small>{x.guest || name.trim()} · {x.at}</small>}</span>
-                <span>{money(x.svc.price)}</span>
+                {showPrices && <span>{priceLabel(x.svc.price, x.svc.price_from)}</span>}
               </div>
             ))}
             {slot.early && (
@@ -158,7 +158,7 @@ export default function Booking({ categories, review = true, leadHours = 10, pol
               </div>
             )}
           </div>
-          <div className="t-total"><span>Total</span><span>{money(total)}</span></div>
+          <div className="t-total"><span>Precio final</span><span>Lo confirma Elena en el salón</span></div>
         </div>
 
         {pending ? (
@@ -206,7 +206,7 @@ export default function Booking({ categories, review = true, leadHours = 10, pol
           </div>
           {selCat && selCat.services.map((s) => (
             <button key={s.id} className="row" onClick={() => pickService(s)}>
-              <span><span className="semo">{svcEmoji(s.name, selCat.name)}</span>{s.name}</span><span>{dur(s.duration_min)} · ${s.price}</span>
+              <span><span className="semo">{svcEmoji(s.name, selCat.name)}</span>{s.name}</span><span>{dur(s.duration_min)}{showPrices && priceLabel(s.price, s.price_from) && ` · ${priceLabel(s.price, s.price_from)}`}</span>
             </button>
           ))}
           {error && <p className="error">{error}</p>}
@@ -313,15 +313,15 @@ export default function Booking({ categories, review = true, leadHours = 10, pol
           </div>
 
           <div className="pricebox">
-            {party.map((x, i) => (
-              <div className="prow" key={i}><span>{x.svc.name}{party.length > 1 && <small> · {x.guest || name.trim()}</small>}</span><span>{money(x.svc.price)}</span></div>
+            {showPrices && party.filter((x) => +x.svc.price > 0).map((x, i) => (
+              <div className="prow" key={i}><span>{x.svc.name}{party.length > 1 && <small> · {x.guest || name.trim()}</small>}</span><span>{priceLabel(x.svc.price, x.svc.price_from)}</span></div>
             ))}
             {slot.early && (
               <div className="prow prio-row">
                 <span>🌅 {PRIORITY_NAME}<small>Incluye {priority.bonus.toLowerCase()}</small></span><span>+{money(slot.fee)}</span>
               </div>
             )}
-            <div className="prow total"><span>Total</span><span>{money(total)}</span></div>
+            <div className="prow total"><span>Precio final</span><span>Lo confirma Elena en el salón</span></div>
           </div>
 
           <div className="sechead">
