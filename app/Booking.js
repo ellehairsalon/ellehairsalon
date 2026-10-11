@@ -26,6 +26,7 @@ const MAX_PEOPLE = 5;
 
 export default function Booking({ showPrices = false, categories, review = true, leadHours = 10, policyHours = 10, priority = { type: 'fixed', value: 5, bonus: DEFAULT_BONUS } }) {
   const [step, setStep] = useState(1);
+  const feeShown = (amt) => (showPrices ? `+${money(amt)}` : priority.type === 'percent' ? `+${+priority.value}%` : 'Recargo');
   const [cat, setCat] = useState(null);
   const [party, setParty] = useState([]); // [{ svc, guest }]: la primera persona es quien reserva
   const [adding, setAdding] = useState(false); // eligiendo el servicio de otra persona
@@ -154,7 +155,7 @@ export default function Booking({ showPrices = false, categories, review = true,
               <div className="t-line prio-row">
                 <span className="t-emo">🌅</span>
                 <span className="t-name">{PRIORITY_NAME}<small>Incluye {priority.bonus.toLowerCase()}</small></span>
-                <span>+{money(slot.fee)}</span>
+                <span>{feeShown(slot.fee)}</span>
               </div>
             )}
           </div>
@@ -206,7 +207,10 @@ export default function Booking({ showPrices = false, categories, review = true,
           </div>
           {selCat && selCat.services.map((s) => (
             <button key={s.id} className="row" onClick={() => pickService(s)}>
-              <span><span className="semo">{svcEmoji(s.name, selCat.name)}</span>{s.name}</span><span>{dur(s.duration_min)}{showPrices && priceLabel(s.price, s.price_from) && ` · ${priceLabel(s.price, s.price_from)}`}</span>
+              <span><span className="semo">{svcEmoji(s.name, selCat.name)}</span>{s.name}</span><span className="rmeta">
+                {showPrices && priceLabel(s.price, s.price_from) && <b className="rprice">{s.price_from && <em>desde </em>}{money(s.price)}</b>}
+                <small className="rdur">◷ {dur(s.duration_min)}</small>
+              </span>
             </button>
           ))}
           {error && <p className="error">{error}</p>}
@@ -258,14 +262,14 @@ export default function Booking({ showPrices = false, categories, review = true,
                 <div className="prio">
                   <div className="prio-head">
                     <b>🌅 {PRIORITY_NAME}</b>
-                    <span className="prio-tag">{feeTag(priority)}{party.length > 1 ? ' por persona' : ''}</span>
+                    <span className="prio-tag">{showPrices ? feeTag(priority) : priority.type === 'percent' ? `+${+priority.value}% de recargo` : 'Con recargo'}{party.length > 1 ? ' por persona' : ''}</span>
                   </div>
                   <div className="prio-note">Incluye {priority.bonus.toLowerCase()}.</div>
                   <div className="grid">
                     {dayData.slots.filter((s) => s.early).map((s) => (
                       <button key={s.starts_at} className={'chip prio-chip' + (slot?.starts_at === s.starts_at ? ' on' : '')}
                         onClick={() => { setSlot(s); setStep(3); }}>
-                        {s.time}<small>+{money(s.fee)}</small>
+                        {s.time}{showPrices && <small>+{money(s.fee)}</small>}
                       </button>
                     ))}
                   </div>
@@ -318,7 +322,7 @@ export default function Booking({ showPrices = false, categories, review = true,
             ))}
             {slot.early && (
               <div className="prow prio-row">
-                <span>🌅 {PRIORITY_NAME}<small>Incluye {priority.bonus.toLowerCase()}</small></span><span>+{money(slot.fee)}</span>
+                <span>🌅 {PRIORITY_NAME}<small>Incluye {priority.bonus.toLowerCase()}</small></span><span>{feeShown(slot.fee)}</span>
               </div>
             )}
             <div className="prow total"><span>Precio final</span><span>Lo confirma Elena en el salón</span></div>
