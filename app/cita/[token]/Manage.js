@@ -13,6 +13,9 @@ const fmt = (iso) => new Date(iso).toLocaleString('es-EC', {
 });
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 
+// Recargo del turno prioritario: porcentaje si así está configurado; si no, el monto (si lo hay)
+const feeLabel = (d, amount) => (d.feeType === 'percent' ? `+${+d.feeValue}%` : +(amount ?? d.appt?.early_fee) > 0 ? `+${money(amount ?? d.appt.early_fee)}` : 'Recargo');
+
 export default function Manage({ token }) {
   const [d, setD] = useState(null);
   const [err, setErr] = useState('');
@@ -104,11 +107,11 @@ export default function Manage({ token }) {
               <span>{priceLabel(x.price, x.price_from)}</span>
             </div>
           ))}
-          {a.early_fee > 0 && (
+          {(a.early || a.early_fee > 0) && (
             <div className="t-line prio-row">
               <span className="t-emo">🌅</span>
               <span className="t-name">{PRIORITY_NAME}<small>Incluye {d.bonus?.toLowerCase()}</small></span>
-              <span>+{money(a.early_fee)}</span>
+              <span>{feeLabel(d)}</span>
             </div>
           )}
         </div>
@@ -176,7 +179,7 @@ export default function Manage({ token }) {
           <div className="grid">
             {slots?.map((s) => (
               <button key={s.starts_at} className={'chip' + (s.early ? ' prio-chip' : '') + (slot?.starts_at === s.starts_at ? ' on' : '')} onClick={() => setSlot(s)}>
-                {s.time}{s.early && <small>+{money(s.fee)}</small>}
+                {s.time}{s.early && <small>{feeLabel(d, s.fee)}</small>}
               </button>
             ))}
           </div>

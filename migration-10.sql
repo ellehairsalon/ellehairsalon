@@ -9,6 +9,8 @@ select 'Maquillaje', 5 where not exists (select 1 from service_categories where 
 update service_categories set sort_order = case lower(name)
   when 'corte' then 1 when 'color' then 2 when 'tratamientos' then 3 when 'peinados' then 4 when 'maquillaje' then 5 else sort_order end;
 
+do $$
+begin
 drop table if exists menu;
 create temp table menu (cat text, name text, mins int, ord int, price numeric, pfrom boolean);
 insert into menu values
@@ -38,3 +40,4 @@ where s.is_active and st.is_bookable
 -- Turno prioritario: 20% de recargo
 update salon_settings set early_fee_type = 'percent', early_fee_value = 20 where id = 1;
 drop table menu;
+end $$;

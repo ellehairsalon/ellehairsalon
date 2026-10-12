@@ -307,3 +307,87 @@ a.linkbtn { display:block; text-align:center; text-decoration:none; color:#fff; 
 .rprice { font-size:1.02rem; font-weight:700; color:var(--ink,#1d1d1f); letter-spacing:-.01em; }
 .rprice em { font-style:normal; font-weight:500; font-size:.72rem; color:var(--muted); margin-right:2px; }
 .rdur { font-size:.78rem; color:var(--muted); font-weight:500; }
+
+/* ---- Nueva cita (asistente en 3 pasos) ---- */
+.sheet.na { padding-top:14px; min-height:55vh; }
+.na-bar { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:14px; }
+.na-ic { width:38px; height:38px; border-radius:50%; border:0; background:#ece6ef; color:var(--ink); font-size:1.15rem; line-height:1; cursor:pointer; display:grid; place-items:center; padding:0; }
+.na-ic.ghosted { background:none; cursor:default; }
+.na-title { text-align:center; }
+.na-title b { font-size:1.12rem; letter-spacing:-.01em; }
+.na-dots { display:flex; gap:5px; justify-content:center; margin-top:6px; }
+.na-dots i { width:18px; height:4px; border-radius:2px; background:#ddd4e2; }
+.na-dots i.on { background:var(--berry); }
+.na-chip { display:flex; align-items:center; gap:8px; width:100%; padding:10px 14px; margin-bottom:14px; background:#fff; border:1px solid var(--line); border-radius:14px; font:inherit; color:inherit; cursor:pointer; text-align:left; }
+.na-chip span { font-size:1.2rem; }
+.na-chip small { color:var(--muted); }
+.na-chip em { margin-left:auto; font-style:normal; font-size:.82rem; color:var(--berry); font-weight:600; }
+.na-cats { display:flex; gap:8px; overflow-x:auto; padding-bottom:6px; margin:0 -4px 10px; scrollbar-width:none; }
+.na-cats::-webkit-scrollbar { display:none; }
+.na-cat { flex:none; padding:9px 16px; border-radius:999px; border:1px solid var(--line); background:#fff; font:inherit; font-weight:600; font-size:.92rem; color:var(--ink); cursor:pointer; }
+.na-cat.on { background:var(--ink); border-color:var(--ink); color:#fff; }
+.na-list { display:flex; flex-direction:column; gap:8px; }
+.na-svc { display:flex; align-items:center; gap:12px; width:100%; padding:14px; background:#fff; border:1px solid var(--line); border-radius:16px; font:inherit; color:inherit; text-align:left; cursor:pointer; transition:transform .08s; }
+.na-svc:active, .na-card:active, .na-day:active, .na-time:active { transform:scale(.98); }
+.na-emo { font-size:1.5rem; width:40px; height:40px; display:grid; place-items:center; background:#f4eef7; border-radius:12px; flex:none; }
+.na-svc b { flex:1; font-weight:600; }
+.na-svc small { color:var(--muted); }
+.na-svc i, .na-card i { font-style:normal; color:#b9adc0; font-size:1.3rem; }
+.na-card { display:flex; align-items:center; gap:14px; width:100%; padding:16px; margin-bottom:10px; background:#fff; border:1px solid var(--line); border-radius:18px; font:inherit; color:inherit; text-align:left; cursor:pointer; transition:transform .08s; }
+.na-card:disabled { opacity:.5; cursor:not-allowed; }
+.na-card > span:nth-child(2) { flex:1; display:flex; flex-direction:column; }
+.na-card small { color:var(--muted); font-size:.85rem; }
+.na-ci { font-size:1.4rem; width:44px; height:44px; display:grid; place-items:center; border-radius:14px; background:#f4eef7; flex:none; }
+.na-card.na-now { background:var(--berry); border-color:var(--berry); color:#fff; box-shadow:0 8px 20px -10px rgba(142,27,74,.6); }
+.na-card.na-now .na-ci { background:rgba(255,255,255,.18); }
+.na-card.na-now small, .na-card.na-now i { color:rgba(255,255,255,.8); }
+.na-label { font-size:.8rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin:18px 2px 8px; }
+.na-days { display:flex; gap:8px; overflow-x:auto; padding:2px 2px 8px; scrollbar-width:none; }
+.na-days::-webkit-scrollbar { display:none; }
+.na-day { flex:none; width:54px; padding:8px 0; display:flex; flex-direction:column; align-items:center; gap:2px; background:#fff; border:1px solid var(--line); border-radius:14px; font:inherit; color:var(--ink); cursor:pointer; }
+.na-day small { font-size:.72rem; color:var(--muted); }
+.na-day b { font-size:1.1rem; }
+.na-day.on { background:var(--ink); border-color:var(--ink); color:#fff; }
+.na-day.on small { color:rgba(255,255,255,.7); }
+.na-times { display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; margin-top:6px; }
+.na-time { padding:11px 0; background:#fff; border:1px solid var(--line); border-radius:12px; font:inherit; font-weight:600; color:var(--ink); cursor:pointer; position:relative; }
+.na-time.early { border-color:var(--amber-line, #f0c987); background:#fffaf0; }
+.na-time small { position:absolute; top:-5px; right:-3px; font-size:.7rem; }
+.na-sum { display:flex; align-items:center; gap:12px; padding:14px; background:#fff; border:1px solid var(--line); border-radius:16px; margin-bottom:6px; }
+.na-sum div { display:flex; flex-direction:column; }
+.na-sum small { color:var(--muted); }
+.na-go { border-radius:14px; padding:16px; font-size:1.02rem; margin-top:18px; }
+.sheet.na label { display:block; margin-top:14px; font-size:.85rem; font-weight:600; color:var(--muted); }
+.sheet.na input { border-radius:12px; font-size:1rem; padding:13px; font-weight:400; color:var(--ink); }
+.na button, .na-card, .na-svc, .na-chip, .na-day, .na-time, .na-cat { box-sizing:border-box; }
+
+/* Nueva cita (panel) */
+.fab { width:auto !important; height:52px !important; border-radius:26px !important; padding:0 20px 0 14px; display:flex; align-items:center; gap:8px; }
+.fab span { font-size:1.6rem; line-height:1; margin-top:-2px; }
+.fab b { font-size:.98rem; font-weight:600; letter-spacing:-.01em; }
+.na-step { display:block; font-size:.8rem; color:var(--muted); margin-top:1px; }
+.na-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.na-tile { display:flex; flex-direction:column; align-items:flex-start; gap:6px; padding:14px; min-height:112px; background:#fff; border:1px solid var(--line); border-radius:18px; font:inherit; color:inherit; text-align:left; cursor:pointer; transition:transform .08s, border-color .15s; box-sizing:border-box; }
+.na-tile:active { transform:scale(.97); border-color:var(--berry); }
+.na-tile b { font-weight:600; line-height:1.25; flex:1; }
+.na-tile small { color:var(--muted); font-size:.8rem; background:#f4eef7; padding:2px 8px; border-radius:999px; }
+.na-daylabel { font-weight:700; font-size:1.05rem; letter-spacing:-.01em; margin:14px 2px 2px; }
+.na-grp { margin-top:12px; }
+.na-grp-l { font-size:.76rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin:0 2px 8px; }
+.na-time { padding:13px 0; }
+.na-time.early { color:#8a5a00; }
+.na-edit { margin-left:auto; border:0; background:#f4eef7; color:var(--berry); font:inherit; font-size:.82rem; font-weight:600; padding:7px 12px; border-radius:999px; cursor:pointer; }
+.na-found { margin-top:10px; background:#fff; border:1px solid var(--line); border-radius:16px; padding:10px 10px 4px; }
+.na-who { display:flex; align-items:center; gap:10px; width:100%; padding:8px 4px; margin-bottom:4px; background:none; border:0; border-top:1px solid #f0eaf3; font:inherit; color:inherit; text-align:left; cursor:pointer; }
+.na-who:first-of-type { border-top:0; }
+.na-who span:nth-child(2) { flex:1; display:flex; flex-direction:column; }
+.na-who small { color:var(--muted); }
+.na-who i { font-style:normal; font-size:.82rem; font-weight:600; color:var(--berry); }
+.na-av { width:34px; height:34px; border-radius:50%; background:linear-gradient(135deg,#c2557f,#8e1b4a); color:#fff; display:grid; place-items:center; font-weight:700; flex:none; }
+.na-foot { position:sticky; bottom:-1px; padding:12px 0 4px; margin-top:8px; background:linear-gradient(to top, var(--bg) 70%, transparent); }
+.na-foot .na-go { margin-top:0; width:100%; }
+.na-ok { display:flex; flex-direction:column; align-items:center; text-align:center; gap:6px; padding:56px 0 48px; }
+.na-ok b { font-size:1.2rem; }
+.na-ok small { color:var(--muted); }
+.na-check { width:72px; height:72px; border-radius:50%; background:var(--berry); color:#fff; font-size:2.2rem; display:grid; place-items:center; animation:na-pop .35s cubic-bezier(.2,1.4,.4,1); margin-bottom:8px; }
+@keyframes na-pop { from { transform:scale(.4); opacity:0; } to { transform:scale(1); opacity:1; } }

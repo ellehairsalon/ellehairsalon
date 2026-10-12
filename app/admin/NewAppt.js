@@ -1,24 +1,51 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { svcEmoji } from '@/lib/emoji';
 
-const fmt = (iso) => new Date(iso).toLocaleString('es-EC', {
-  weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'America/Guayaquil',
+const TZ = 'America/Guayaquil';
+const fmt = (iso) => new Date(iso).toLocaleString('es-EC', { weekday: 'long', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: TZ });
+const dur = (m) => (m >= 60 ? `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ''}` : `${m} min`);
+const inMin = (m) => (m < 1 ? 'ahora' : m < 60 ? `en ${m} min` : `en ${dur(m)}`);
+const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+
+// próximos 14 días (fecha de Ecuador)
+const days = () => Array.from({ length: 14 }, (_, i) => {
+  const d = new Date(Date.now() - 5 * 3600000 + i * 864e5);
+  const iso = d.toISOString().slice(0, 10);
+  const wd = new Date(iso + 'T12:00:00Z').toLocaleDateString('es-EC', { weekday: 'short', timeZone: 'UTC' }).replace('.', '');
+  return { iso, wd: i === 0 ? 'Hoy' : cap(wd), n: +iso.slice(8) };
 });
 
 export default function NewAppt() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [step, setStep] = useState(1);
   const [svcs, setSvcs] = useState([]);
-  const [svc, setSvc] = useState('');
-  const [asap, setAsap] = useState(null);
+  const [cat, setCat] = useState(null);
+  const [svc, setSvc] = useState(null);
+  const [asap, setAsap] = useState(undefined); // undefined = cargando, null = sin huecos
   const [date, setDate] = useState('');
-  const [slots, setSlots] = useState([]);
+  const [slots, setSlots] = useState(null);
   const [slot, setSlot] = useState(null);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
+  const [found, setFound] = useState([]);
+  const [picked, setPicked] = useState(false);
+  const [okMsg, setOkMsg] = useState('');
+  const strip = useMemo(days, [open]);
+
+  const cats = useMemo(() => {
+    const g = [];
+    for (const s of svcs) {
+      const n = s.service_categories?.name || 'Otros';
+      (g.find((x) => x.name === n) || (g[g.length] = { name: n, items: [] })).items.push(s);
+    }
+    return g;
+  }, [svcs]);
+  const curCat = cats.find((c) => c.name === cat) || cats[0];
 
   useEffect(() => {
     if (open && !svcs.length)
@@ -26,82 +53,183 @@ export default function NewAppt() {
   }, [open]);
 
   useEffect(() => {
-    setAsap(null); setSlot(null); setSlots([]); setDate('');
+    setAsap(undefined); setSlot(null); setSlots(null); setDate('');
     if (!svc) return;
-    fetch(`/api/admin/slots?service=${svc}&asap=1`).then((r) => r.json())
-      .then((j) => { setAsap(j.slot); });
+    fetch(`/api/admin/slots?service=${svc.id}&asap=1`).then((r) => r.json()).then((j) => setAsap(j.slot || null));
   }, [svc]);
 
   useEffect(() => {
     if (!svc || !date) return;
-    setSlot(null);
-    fetch(`/api/admin/slots?service=${svc}&date=${date}`).then((r) => r.json()).then((j) => setSlots(j.slots || []));
+    setSlots(null);
+    fetch(`/api/admin/slots?service=${svc.id}&date=${date}`).then((r) => r.json()).then((j) => setSlots(j.slots || []));
   }, [date]);
+
+  // clientes guardados que coinciden con lo que se escribe
+  useEffect(() => {
+    if (step !== 3 || picked) { setFound([]); return; }
+    const digits = phone.replace(/\D/g, '');
+    const q = name.trim().length >= 2 ? name.trim() : digits.length >= 4 ? digits : '';
+    if (!q) { setFound([]); return; }
+    const t = setTimeout(() => fetch(`/api/admin/client?q=${encodeURIComponent(q)}`).then((r) => r.json()).then((j) => setFound(j.clients || [])).catch(() => {}), 250);
+    return () => clearTimeout(t);
+  }, [name, phone, step, picked]);
+
+  function close() { setPicked(false); setFound([]); setOkMsg(''); setOpen(false); setStep(1); setSvc(null); setSlot(null); setDate(''); setName(''); setPhone(''); setErr(''); }
+  function choose(s) { setSlot(s); setStep(3); }
 
   async function save() {
     setBusy(true); setErr('');
     const r = await fetch('/api/admin/new', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(slot.now
-        ? { service_id: svc, name, phone, start_now: true }
-        : { service_id: svc, starts_at: slot.starts_at, name, phone, walk_in: !!slot.walk }),
+        ? { service_id: svc.id, name, phone, start_now: true }
+        : { service_id: svc.id, starts_at: slot.starts_at, name, phone, walk_in: !!slot.walk }),
     });
     const j = await r.json();
     setBusy(false);
     if (!r.ok) { setErr(j.error); return; }
-    setOpen(false); setSvc(''); setName(''); setPhone('');
+    setOkMsg(slot.now ? 'Ya está en atención' : `Agendada · ${cap(fmt(slot.starts_at))}`);
     router.refresh();
+    setTimeout(close, 1700);
   }
+
+  const groups = useMemo(() => {
+    if (!slots) return [];
+    const g = [
+      { k: 'early', label: '🌅 Turno prioritario', items: slots.filter((x) => x.early) },
+      { k: 'am', label: 'Mañana', items: [] }, { k: 'pm', label: 'Tarde', items: [] }, { k: 'nt', label: 'Noche', items: [] },
+    ];
+    for (const x of slots.filter((y) => !y.early)) {
+      const h = +x.time.slice(0, 2);
+      g[h < 12 ? 1 : h < 18 ? 2 : 3].items.push(x);
+    }
+    return g.filter((x) => x.items.length);
+  }, [slots]);
+  const dayLabel = date ? cap(new Date(date + 'T12:00:00Z').toLocaleDateString('es-EC', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })) : '';
+  const emo = svc ? svcEmoji(svc.name, svc.service_categories?.name) : '';
+  const when = slot ? (slot.now ? 'Ahora mismo · pasa a “En atención”' : cap(fmt(slot.starts_at))) : '';
 
   return (
     <>
-      <button className="fab" aria-label="Nueva cita" onClick={() => setOpen(true)}>＋</button>
+      <button className="fab" aria-label="Nueva cita" onClick={() => setOpen(true)}><span>＋</span><b>Nueva cita</b></button>
       {open && (
-        <div className="scrim" onClick={() => setOpen(false)}>
-          <div className="sheet" onClick={(e) => e.stopPropagation()}>
-            <h2>Nueva cita</h2>
-            <select value={svc} onChange={(e) => setSvc(e.target.value)}>
-              <option value="">¿Qué servicio?</option>
-              {svcs.map((s) => <option key={s.id} value={s.id}>{s.name} · {s.duration_min} min · ${s.price}</option>)}
-            </select>
+        <div className="scrim" onClick={close}>
+          <div className="sheet na" onClick={(e) => e.stopPropagation()}>
+            {okMsg ? (
+              <div className="na-ok">
+                <div className="na-check">✓</div>
+                <b>{okMsg}</b>
+                <small>{name.trim()} · {svc?.name}</small>
+              </div>
+            ) : (<>
+            <div className="na-bar">
+              {step > 1 ? <button className="na-ic" onClick={() => setStep(step - 1)} aria-label="Atrás">‹</button> : <span className="na-ic ghosted" />}
+              <div className="na-title">
+                <b>{step === 1 ? 'Nueva cita' : step === 2 ? '¿Cuándo?' : '¿Para quién?'}</b>
+                <span className="na-step">{step === 1 ? 'Elige el servicio' : step === 2 ? 'Elige día y hora' : 'Datos del cliente'}</span>
+                <div className="na-dots">{[1, 2, 3].map((n) => <i key={n} className={n <= step ? 'on' : ''} />)}</div>
+              </div>
+              <button className="na-ic" onClick={close} aria-label="Cerrar">✕</button>
+            </div>
 
-            {svc && (
+            {step === 2 && svc && (
+              <button className="na-chip" onClick={() => setStep(1)}>
+                <span>{emo}</span><b>{svc.name}</b><small>{dur(svc.duration_min)}</small><em>Cambiar</em>
+              </button>
+            )}
+
+            {step === 1 && (
               <>
-                <h3>Llegó sin cita</h3>
-                <button className={'row' + (slot?.now ? ' on' : '')} onClick={() => setSlot({ now: true })}>
-                  <span>Empezar ahora mismo</span><span>pasa a "En atención"</span>
-                </button>
-                <h3>Lo antes posible</h3>
-                {asap
-                  ? <button className={'row' + (slot?.walk ? ' on' : '')} onClick={() => setSlot({ ...asap, walk: true })}>
-                      <span>{fmt(asap.starts_at)}</span><span>en {asap.minutes} min</span>
-                    </button>
-                  : <p className="note">No hay huecos en los próximos días.</p>}
-                <h3>O elige otro día</h3>
-                <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-                <div className="grid">
-                  {slots.map((s) => (
-                    <button key={s.starts_at} className={'chip' + (!slot?.walk && !slot?.now && slot?.starts_at === s.starts_at ? ' on' : '')}
-                      onClick={() => setSlot(s)}>{s.time}{s.early && '*'}</button>
+                <div className="na-cats">
+                  {cats.map((c) => (
+                    <button key={c.name} className={'na-cat' + (curCat?.name === c.name ? ' on' : '')} onClick={() => setCat(c.name)}>{c.name}</button>
                   ))}
                 </div>
-                {date && slots.length === 0 && <p className="note">No hay horarios libres ese día.</p>}
-              </>
-            )}
-
-            {slot && (
-              <>
-                <label>Nombre<input value={name} onChange={(e) => setName(e.target.value)} /></label>
-                <label>WhatsApp<input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" placeholder="09XXXXXXXX" /></label>
-                {err && <p className="error">{err}</p>}
-                <div className="actions">
-                  <button className="cta" disabled={busy || name.trim().length < 2 || phone.length < 9} onClick={save}>
-                    {busy ? 'Guardando…' : slot.now ? 'Empezar ahora' : 'Agendar'}
-                  </button>
-                  <button className="ghost" onClick={() => setOpen(false)}>Cancelar</button>
+                <div className="na-grid">
+                  {curCat?.items.map((s) => (
+                    <button key={s.id} className="na-tile" onClick={() => { setSvc(s); setStep(2); }}>
+                      <span className="na-emo">{svcEmoji(s.name, curCat.name)}</span>
+                      <b>{s.name}</b>
+                      <small>◷ {dur(s.duration_min)}</small>
+                    </button>
+                  ))}
+                  {!svcs.length && <p className="note">Cargando…</p>}
                 </div>
               </>
             )}
+
+            {step === 2 && (
+              <>
+                <button className="na-card na-now" onClick={() => choose({ now: true })}>
+                  <span className="na-ci">⚡</span>
+                  <span><b>Llegó sin cita</b><small>Empezar ahora mismo</small></span>
+                  <i>›</i>
+                </button>
+                <button className="na-card" disabled={!asap} onClick={() => asap && choose({ ...asap, walk: true })}>
+                  <span className="na-ci">🕒</span>
+                  <span>
+                    <b>Primer hueco libre</b>
+                    <small>{asap === undefined ? 'Buscando…' : asap ? `${cap(fmt(asap.starts_at))} · ${inMin(asap.minutes)}` : 'No hay huecos en 2 semanas'}</small>
+                  </span>
+                  <i>›</i>
+                </button>
+
+                <div className="na-label">O elige otro día</div>
+                <div className="na-days">
+                  {strip.map((d) => (
+                    <button key={d.iso} className={'na-day' + (date === d.iso ? ' on' : '')} onClick={() => setDate(d.iso)}>
+                      <small>{d.wd}</small><b>{d.n}</b>
+                    </button>
+                  ))}
+                </div>
+                {date && <div className="na-daylabel">{dayLabel}</div>}
+                {date && slots === null && <p className="note">Buscando horarios…</p>}
+                {date && slots && slots.length === 0 && <p className="note">No hay horarios libres ese día.</p>}
+                {groups.map((g) => (
+                  <div key={g.k} className="na-grp">
+                    <div className="na-grp-l">{g.label}</div>
+                    <div className="na-times">
+                      {g.items.map((s) => (
+                        <button key={s.starts_at} className={'na-time' + (s.early ? ' early' : '')} onClick={() => choose(s)}>{s.time}</button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
+
+            {step === 3 && slot && (
+              <>
+                <div className="na-sum">
+                  <span className="na-emo">{emo}</span>
+                  <div><b>{svc.name}</b><small>{when}</small></div>
+                  <button className="na-edit" onClick={() => setStep(2)}>Cambiar</button>
+                </div>
+                <label>Nombre
+                  <input value={name} onChange={(e) => { setName(e.target.value); setPicked(false); }} placeholder="Nombre del cliente" autoFocus autoComplete="off" />
+                </label>
+                {found.length > 0 && (
+                  <div className="na-found">
+                    <div className="na-grp-l">¿Es alguno de estos clientes?</div>
+                    {found.map((c) => (
+                      <button key={c.id} className="na-who" onClick={() => { setName(c.full_name); setPhone(c.phone); setPicked(true); setFound([]); }}>
+                        <span className="na-av">{c.full_name.trim().charAt(0).toUpperCase()}</span>
+                        <span><b>{c.full_name}</b><small>{c.phone}</small></span>
+                        <i>Usar</i>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <label>WhatsApp<input value={phone} onChange={(e) => { setPhone(e.target.value); setPicked(false); }} inputMode="tel" placeholder="09XXXXXXXX" autoComplete="off" /></label>
+                {err && <p className="error">{err}</p>}
+                <div className="na-foot">
+                  <button className="cta na-go" disabled={busy || name.trim().length < 2 || phone.replace(/\D/g, '').length < 9} onClick={save}>
+                    {busy ? 'Guardando…' : slot.now ? '⚡ Empezar ahora' : '✓ Agendar cita'}
+                  </button>
+                </div>
+              </>
+            )}
+            </>)}
           </div>
         </div>
       )}

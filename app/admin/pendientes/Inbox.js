@@ -18,7 +18,7 @@ const ago = (iso) => {
 const initials = (n = '') => n.trim().split(/\s+/).slice(0, 2).map((x) => x[0]?.toUpperCase()).join('');
 const dur = (m) => (m >= 60 ? `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ''}` : `${m} min`);
 
-export default function Inbox({ items, hours = 10, bonus }) {
+export default function Inbox({ items, hours = 10, bonus, feeType = 'fixed', feeValue = 0 }) {
   const router = useRouter();
   const [done, setDone] = useState({}); // id -> { state: 'confirmed' | 'rejected', item }: ya respondida, falta enviar el WhatsApp
   const [ask, setAsk] = useState(null); // id de la solicitud que se está por rechazar
@@ -66,7 +66,7 @@ export default function Inbox({ items, hours = 10, bonus }) {
             <div className="req-when">
               <span className="req-day">{dayLabel(a.starts_at)}</span>
               <span className="req-hour">{hmx(a.starts_at)}</span>
-              {a.early_fee > 0 && <span className="chip-prio">🌅 Prioritario +{money(a.early_fee)}</span>}
+              {(a.early || a.early_fee > 0) && <span className="chip-prio">🌅 Prioritario {feeType === 'percent' ? `+${+feeValue}%` : a.early_fee > 0 ? `+${money(a.early_fee)}` : ''}</span>}
             </div>
 
             <div className="req-items">

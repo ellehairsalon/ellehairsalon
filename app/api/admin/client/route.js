@@ -4,6 +4,18 @@ import { normPhone, validEmail, validBirthday, validCedula } from '@/lib/validat
 
 const bad = (error, status = 400) => Response.json({ error }, { status });
 
+// Búsqueda rápida para "nueva cita": clientes guardados por nombre o teléfono
+export async function GET(req) {
+  if (!(await isAdmin())) return bad('No autorizado', 401);
+  const q = String(new URL(req.url).searchParams.get('q') || '').trim().replace(/[%,()*]/g, '');
+  if (q.length < 2) return Response.json({ clients: [] });
+  const digits = q.replace(/\D/g, '');
+  const parts = [`full_name.ilike.%${q}%`];
+  if (digits.length >= 4) parts.push(`phone.ilike.%${digits.slice(-9)}%`);
+  const { data } = await db.from('clients').select('id,full_name,phone').or(parts.join(',')).order('full_name').limit(5);
+  return Response.json({ clients: data || [] });
+}
+
 export async function POST(req) {
   if (!(await isAdmin())) return bad('No autorizado', 401);
   const b = await req.json();

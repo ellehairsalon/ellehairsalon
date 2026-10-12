@@ -1,4 +1,4 @@
-import { db, getGroupSlots, earlyFeeFor } from '@/lib/slots';
+import { db, getGroupSlots, earlyFeeFor, isEarlyAt } from '@/lib/slots';
 import { validEmail, validBirthday } from '@/lib/validate';
 
 const SEL = 'id,client_id,service_id,starts_at,ends_at,price,early_fee,status,group_id,guest_name,services(name,duration_min,price_from),clients(full_name,email,birthday_month,birthday_day)';
@@ -25,7 +25,7 @@ export async function GET(req, { params }) {
   const live = group.filter((x) => ACTIVE.includes(x.status));
   const a = live[0] || group[0]; // la primera cita vigente marca la hora de la reserva
   const hours = await minHours();
-  const { data: pc } = await db.from('salon_settings').select('early_bonus').eq('id', 1).single();
+  const { data: pc } = await db.from('salon_settings').select('early_bonus,early_fee_type,early_fee_value').eq('id', 1).single();
   // Una solicitud en revisión se puede cambiar o cancelar libremente; una cita confirmada, hasta 'hours' antes.
   const canChange = a.status === 'pending' ? hoursLeft(a) > 0 : a.status === 'confirmed' && hoursLeft(a) >= hours;
   const date = new URL(req.url).searchParams.get('date');
@@ -38,9 +38,10 @@ export async function GET(req, { params }) {
     appt: {
       service: a.services.name, starts_at: a.starts_at, status: a.status,
       price: live.reduce((n, x) => n + +x.price, 0), early_fee: live.reduce((n, x) => n + +x.early_fee, 0),
+      early: await isEarlyAt(live[0].starts_at),
       items: live.map((x) => ({ service: x.services.name, price: +x.price, price_from: !!x.services.price_from, guest_name: x.guest_name, starts_at: x.starts_at, ends_at: x.ends_at })),
     },
-    canChange, hours, slots, bonus: pc?.early_bonus || 'Lavado con masaje de cuero cabelludo', deadline: +new Date(a.starts_at) - hours * 3600000,
+    canChange, hours, slots, bonus: pc?.early_bonus || 'Lavado con masaje de cuero cabelludo', feeType: pc?.early_fee_type || 'fixed', feeValue: pc?.early_fee_value ?? 0, deadline: +new Date(a.starts_at) - hours * 3600000,
     profile: { needs: !a.clients?.email || !a.clients?.birthday_month }, // ¿falta completar el perfil?
   });
 }
