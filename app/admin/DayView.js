@@ -74,14 +74,14 @@ export default function DayView({ appts, isToday, policyHours = 10, bonus }) {
         {isToday && nowMin >= START * 60 && nowMin < END * 60 && <div className="now" style={{ top: ((nowMin - START * 60) * PX) / 60 }} />}
         {items.map(({ a, s, e, col, cols }) => (
           <button key={a.id}
-            className={'blk' + (a.status === 'pending' ? ' pend' : a.status !== 'confirmed' ? ' done' : '') + (a.started_at && a.status === 'confirmed' ? ' live' : '') + (a.checked_in_at && !a.started_at ? ' here' : '')}
+            className={'blk' + (a.status === 'pending' ? ' pend' : a.status !== 'confirmed' ? ' done' : '') + (a.started_at && a.status === 'confirmed' ? ' live' : '') + (a.checked_in_at && !a.started_at ? ' here' : '') + (a.early || a.early_fee > 0 ? ' prio' : '')}
             style={{
-              top: ((s - START * 60) * PX) / 60, height: Math.max(((e - s) * PX) / 60 - 2, 30),
+              top: ((s - START * 60) * PX) / 60 + 2, height: Math.max(((e - s) * PX) / 60 - 5, 30),
               left: `calc(${(col / cols) * 100}% + 4px)`, width: `calc(${100 / cols}% - 6px)`, right: 'auto',
-              background: colorOf(a.services.service_categories?.name),
+              ...(a.early || a.early_fee > 0 ? {} : { background: colorOf(a.services.service_categories?.name) }),
             }}
             onClick={() => { setSel(a); setNote(a.notes || ''); }}>
-            <b>{a.guest_name || a.clients.full_name}{a.early_fee > 0 && ' 🌅'}</b><span>{svcEmoji(a.services.name, a.services.service_categories?.name)} {a.services.name} · {hm(a.starts_at)}</span>
+            <b>{a.guest_name || a.clients.full_name}{(a.early || a.early_fee > 0) && ' 🌅'}</b><span>{svcEmoji(a.services.name, a.services.service_categories?.name)} {a.services.name} · {hm(a.starts_at)}</span>
           </button>
         ))}
       </div>
@@ -100,7 +100,7 @@ export default function DayView({ appts, isToday, policyHours = 10, bonus }) {
             {sel.guest_name && <p className="note" style={{ marginTop: -4 }}>Reservó {sel.clients.full_name}</p>}
             <p>
               {sel.services.name} · {hm(sel.starts_at)} – {hm(sel.ends_at)}<br />
-              {sel.stylists.name} · ${sel.price}{sel.early_fee > 0 && ` + $${sel.early_fee} turno prioritario 🌅`}
+              {sel.stylists.name} · ${sel.price}{(sel.early || sel.early_fee > 0) && ` · 🌅 Turno prioritario${sel.early_fee > 0 ? ` (+$${sel.early_fee})` : ''}`}
               {STATUS[sel.status] && ` · ${STATUS[sel.status]}`}
               {sel.status === 'confirmed' && sel.started_at && ' · En atención'}
               {sel.status === 'confirmed' && !sel.started_at && sel.checked_in_at && ' · En espera'}

@@ -391,3 +391,13 @@ a.linkbtn { display:block; text-align:center; text-decoration:none; color:#fff; 
 .na-ok small { color:var(--muted); }
 .na-check { width:72px; height:72px; border-radius:50%; background:var(--berry); color:#fff; font-size:2.2rem; display:grid; place-items:center; animation:na-pop .35s cubic-bezier(.2,1.4,.4,1); margin-bottom:8px; }
 @keyframes na-pop { from { transform:scale(.4); opacity:0; } to { transform:scale(1); opacity:1; } }
+
+/* Agenda: turnos prioritarios en dorado y separación clara entre citas */
+.blk { box-shadow:0 0 0 2px var(--bg), 0 2px 8px -2px rgba(36,26,43,.22); }
+.hr { border-top-color:#d9d0de; }
+.blk.prio { background:linear-gradient(135deg,#fff1d2,#ffe0a1) !important; border-left-color:var(--amber); color:#5c3b06; box-shadow:0 0 0 2px var(--bg), 0 2px 8px -2px rgba(180,98,10,.35); }
+.blk.prio.pend { background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.55) 0 6px,transparent 6px 12px), linear-gradient(135deg,#fff1d2,#ffe0a1) !important; border:1.5px dashed var(--amber); border-left:4px solid var(--amber); }
+.req.early { border-left:4px solid var(--amber); background:linear-gradient(90deg,#fff8e8,#fff 40%); }
+.na-found-ok { display:inline-flex; align-items:center; gap:4px; margin-top:6px; padding:3px 10px; border-radius:999px; background:#e8f6ec; color:#1d6b39; font-size:.8rem; font-weight:600; }
+.na-new { display:inline-block; margin-top:6px; color:var(--muted); font-size:.8rem; }
+.blk { padding:4px 10px; line-height:1.3; }

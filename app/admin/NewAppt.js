@@ -33,7 +33,7 @@ export default function NewAppt() {
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const [found, setFound] = useState([]);
-  const [picked, setPicked] = useState(false);
+  const [known, setKnown] = useState(null); // null = sin buscar, false = cliente nuevo, objeto = ya existe
   const [okMsg, setOkMsg] = useState('');
   const strip = useMemo(days, [open]);
 
@@ -64,17 +64,28 @@ export default function NewAppt() {
     fetch(`/api/admin/slots?service=${svc.id}&date=${date}`).then((r) => r.json()).then((j) => setSlots(j.slots || []));
   }, [date]);
 
-  // clientes guardados que coinciden con lo que se escribe
+  // Al escribir el WhatsApp completo: si el cliente ya existe, se llena su nombre
+  const digits = phone.replace(/\D/g, '');
   useEffect(() => {
-    if (step !== 3 || picked) { setFound([]); return; }
-    const digits = phone.replace(/\D/g, '');
-    const q = name.trim().length >= 2 ? name.trim() : digits.length >= 4 ? digits : '';
-    if (!q) { setFound([]); return; }
-    const t = setTimeout(() => fetch(`/api/admin/client?q=${encodeURIComponent(q)}`).then((r) => r.json()).then((j) => setFound(j.clients || [])).catch(() => {}), 250);
-    return () => clearTimeout(t);
-  }, [name, phone, step, picked]);
+    setKnown(null);
+    if (step !== 3 || digits.length < 9) return;
+    let alive = true;
+    const t = setTimeout(() => fetch(`/api/admin/client?phone=${encodeURIComponent(phone)}`).then((r) => r.json()).then((j) => {
+      if (!alive) return;
+      setKnown(j.client || false);
+      if (j.client) setName(j.client.full_name);
+    }).catch(() => {}), 250);
+    return () => { alive = false; clearTimeout(t); };
+  }, [phone, step]);
 
-  function close() { setPicked(false); setFound([]); setOkMsg(''); setOpen(false); setStep(1); setSvc(null); setSlot(null); setDate(''); setName(''); setPhone(''); setErr(''); }
+  // sin teléfono todavía: buscar por nombre
+  useEffect(() => {
+    if (step !== 3 || digits.length >= 4 || name.trim().length < 2) { setFound([]); return; }
+    const t = setTimeout(() => fetch(`/api/admin/client?q=${encodeURIComponent(name.trim())}`).then((r) => r.json()).then((j) => setFound(j.clients || [])).catch(() => {}), 250);
+    return () => clearTimeout(t);
+  }, [name, phone, step]);
+
+  function close() { setKnown(null); setFound([]); setOkMsg(''); setOpen(false); setStep(1); setSvc(null); setSlot(null); setDate(''); setName(''); setPhone(''); setErr(''); }
   function choose(s) { setSlot(s); setStep(3); }
 
   async function save() {
@@ -205,14 +216,20 @@ export default function NewAppt() {
                   <div><b>{svc.name}</b><small>{when}</small></div>
                   <button className="na-edit" onClick={() => setStep(2)}>Cambiar</button>
                 </div>
-                <label>Nombre
-                  <input value={name} onChange={(e) => { setName(e.target.value); setPicked(false); }} placeholder="Nombre del cliente" autoFocus autoComplete="off" />
+                <label>WhatsApp
+                  <input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" placeholder="09XXXXXXXX" autoFocus autoComplete="off" />
                 </label>
+                {known && <span className="na-found-ok">✓ Cliente guardado</span>}
+                {known === false && <span className="na-new">Cliente nuevo: escribe su nombre</span>}
+                <label>Nombre
+                  <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre del cliente" autoComplete="off" />
+                </label>
+                {known && name.trim() && name.trim() !== known.full_name && <p className="note">Se corregirá el nombre guardado: “{known.full_name}” → “{name.trim()}”.</p>}
                 {found.length > 0 && (
                   <div className="na-found">
                     <div className="na-grp-l">¿Es alguno de estos clientes?</div>
                     {found.map((c) => (
-                      <button key={c.id} className="na-who" onClick={() => { setName(c.full_name); setPhone(c.phone); setPicked(true); setFound([]); }}>
+                      <button key={c.id} className="na-who" onClick={() => { setName(c.full_name); setPhone(c.phone); setFound([]); }}>
                         <span className="na-av">{c.full_name.trim().charAt(0).toUpperCase()}</span>
                         <span><b>{c.full_name}</b><small>{c.phone}</small></span>
                         <i>Usar</i>
@@ -220,7 +237,6 @@ export default function NewAppt() {
                     ))}
                   </div>
                 )}
-                <label>WhatsApp<input value={phone} onChange={(e) => { setPhone(e.target.value); setPicked(false); }} inputMode="tel" placeholder="09XXXXXXXX" autoComplete="off" /></label>
                 {err && <p className="error">{err}</p>}
                 <div className="na-foot">
                   <button className="cta na-go" disabled={busy || name.trim().length < 2 || phone.replace(/\D/g, '').length < 9} onClick={save}>

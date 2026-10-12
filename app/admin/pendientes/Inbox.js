@@ -53,7 +53,7 @@ export default function Inbox({ items, hours = 10, bonus, feeType = 'fixed', fee
         const st = done[a.id]?.state;
         const people = a.people || [a];
         return (
-          <div className={'req' + (st ? ' ' + st : '')} key={a.id}>
+          <div className={'req' + (st ? ' ' + st : '') + (a.early || a.early_fee > 0 ? ' early' : '')} key={a.id}>
             <div className="req-head">
               <div className="avatar">{initials(a.clients.full_name)}</div>
               <div className="req-who">

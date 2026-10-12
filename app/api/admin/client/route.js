@@ -7,6 +7,13 @@ const bad = (error, status = 400) => Response.json({ error }, { status });
 // Búsqueda rápida para "nueva cita": clientes guardados por nombre o teléfono
 export async function GET(req) {
   if (!(await isAdmin())) return bad('No autorizado', 401);
+  const ph = new URL(req.url).searchParams.get('phone');
+  if (ph) {
+    const p = normPhone(ph);
+    if (!p) return Response.json({ client: null });
+    const { data } = await db.from('clients').select('id,full_name,phone').eq('phone', p).maybeSingle();
+    return Response.json({ client: data || null });
+  }
   const q = String(new URL(req.url).searchParams.get('q') || '').trim().replace(/[%,()*]/g, '');
   if (q.length < 2) return Response.json({ clients: [] });
   const digits = q.replace(/\D/g, '');

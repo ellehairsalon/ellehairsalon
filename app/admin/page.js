@@ -25,6 +25,12 @@ export default async function Admin({ searchParams }) {
     db.from('salon_settings').select('reschedule_min_hours,early_bonus').eq('id', 1).single(),
   ]);
   const hours = cfg?.reschedule_min_hours ?? 10;
+  const { data: bh } = await db.from('business_hours').select('open_time').eq('weekday', new Date(date + 'T12:00:00Z').getUTCDay()).maybeSingle();
+  const openMin = bh?.open_time ? +bh.open_time.slice(0, 2) * 60 + +bh.open_time.slice(3, 5) : 0;
+  const appts = (data || []).map((a) => {
+    const w = new Date(+new Date(a.starts_at) - 5 * 3600000);
+    return { ...a, early: !!openMin && w.getUTCHours() * 60 + w.getUTCMinutes() < openMin };
+  });
   const label = new Date(date + 'T12:00:00Z')
     .toLocaleDateString('es-EC', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
 
@@ -38,7 +44,7 @@ export default async function Admin({ searchParams }) {
       <h1 className="dayh">{label.charAt(0).toUpperCase() + label.slice(1)}</h1>
       <p className="sub-note">{(data || []).filter((x) => x.status !== 'pending').length} {(data || []).filter((x) => x.status !== 'pending').length === 1 ? 'cita' : 'citas'}{(data || []).some((x) => x.status === 'pending') && ` · ${(data || []).filter((x) => x.status === 'pending').length} por confirmar`}</p>
       {bdays?.length > 0 && <p className="bday">🎂 Cumpleaños: {bdays.map((b) => b.full_name).join(', ')}</p>}
-      <DayView appts={data || []} isToday={date === today()} policyHours={hours} bonus={cfg?.early_bonus} />
+      <DayView appts={appts} isToday={date === today()} policyHours={hours} bonus={cfg?.early_bonus} />
       <NewAppt />
     </main>
   );

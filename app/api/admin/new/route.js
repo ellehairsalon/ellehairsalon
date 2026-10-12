@@ -14,6 +14,7 @@ const ACTIVE = 'No se pudo guardar. Si el cliente ya tiene otra cita pendiente, 
 async function findClient(p, n) {
   let { data: client } = await db.from('clients').select('id').eq('phone', p).maybeSingle();
   if (!client) ({ data: client } = await db.from('clients').insert({ phone: p, full_name: n }).select('id').single());
+  else await db.from('clients').update({ full_name: n.slice(0, 100) }).eq('id', client.id).neq('full_name', n); // Elena corrigió el nombre
   return client;
 }
 
