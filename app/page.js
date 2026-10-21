@@ -15,7 +15,8 @@ export default async function Page({ searchParams }) {
     .filter((c) => c.services.length);
   return (
     <main>
-      <h1>Elle Hair Salon</h1>
+      <p className="eyebrow">Agenda tu cita</p>
+      <h1>Elle <em>Hair Salon</em></h1>
       <p className="lead">{(cfg?.approval_mode || 'manual') !== 'auto' ? 'Elige tu servicio y un horario; el salón te confirma por WhatsApp.' : 'Elige tu servicio, un horario y listo.'}</p>
       <Booking showPrices={showPrices} categories={categories} review={(cfg?.approval_mode || 'manual') !== 'auto'} leadHours={cfg?.online_lead_hours ?? 10} policyHours={cfg?.reschedule_min_hours ?? 10}
         priority={{ type: cfg?.early_fee_type || 'fixed', value: cfg?.early_fee_value ?? 5, bonus: cfg?.early_bonus || DEFAULT_BONUS }} />

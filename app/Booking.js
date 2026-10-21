@@ -191,13 +191,13 @@ export default function Booking({ showPrices = false, categories, review = true,
         <section>
           {adding ? (
             <>
-              <h2>¿Para quién más?</h2>
+              <h2>¿Para <em>quién más</em>?</h2>
               <label>Nombre de la persona
                 <input value={guest} onChange={(e) => setGuest(e.target.value)} placeholder="Ej. Carlos, mi hijo Mateo…" autoFocus />
               </label>
               <h3>¿Qué servicio se hará?</h3>
             </>
-          ) : <h2>¿Qué te gustaría hacerte?</h2>}
+          ) : <h2>¿Qué te gustaría <em>hacerte</em>?</h2>}
           <div className="tiles">
             {categories.map((c) => (
               <button key={c.id} className={'tile' + (cat === c.id ? ' on' : '')} onClick={() => setCat(cat === c.id ? null : c.id)}>
@@ -219,7 +219,7 @@ export default function Booking({ showPrices = false, categories, review = true,
 
       {step === 2 && svc && (
         <section>
-          <h2>Elige día y hora</h2>
+          <h2>Elige <em>día y hora</em></h2>
           <div className="party">
             {party.map((x, i) => (
               <div className="pline" key={i}>
@@ -283,7 +283,7 @@ export default function Booking({ showPrices = false, categories, review = true,
 
       {step === 3 && slot && (
         <section>
-          <h2>Tus datos</h2>
+          <h2>Tus <em>datos</em></h2>
           <label>Tu nombre<input value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" /></label>
           <label>WhatsApp<input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" placeholder="09XXXXXXXX" autoComplete="tel" /></label>
           <button className="cta" disabled={name.trim().length < 2 || phone.replace(/\D/g, '').length < 9} onClick={() => setStep(4)}>Continuar</button>
