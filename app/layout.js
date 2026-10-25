@@ -1,3 +1,6 @@
+import '@fontsource-variable/source-serif-4/opsz.css';
+import '@fontsource-variable/source-serif-4/opsz-italic.css';
+import '@fontsource-variable/hanken-grotesk/index.css';
 import './globals.css';
 
 export const metadata = {
@@ -11,11 +14,6 @@ export const viewport = { themeColor: '#b05a36' };
 export default function RootLayout({ children }) {
   return (
     <html lang="es">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;1,6..72,300;1,6..72,400&display=swap" />
-      </head>
       <body>{children}</body>
     </html>
   );

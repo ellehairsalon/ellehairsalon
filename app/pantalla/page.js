@@ -22,11 +22,12 @@ function Big({ mins }) {
 export default function Screen() {
   const [d, setD] = useState(null);
   const [off, setOff] = useState(false);
+  const [auth, setAuth] = useState(false);
   const [now, setNow] = useState(null); // se llena al montar: evita diferencias entre servidor y navegador
 
   useEffect(() => {
     const load = () => fetch('/api/screen' + window.location.search)
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((r) => { setAuth(r.status === 401); return r.ok ? r.json() : Promise.reject(); })
       .then((j) => { setD(j); setOff(false); })
       .catch(() => setOff(true));
     setNow(Date.now());
@@ -84,7 +85,7 @@ export default function Screen() {
         </div>
         <div className="clock">{hm(new Date(now).toISOString())}</div>
       </header>
-      {off && <p className="dim">Sin conexión, reintentando…</p>}
+      {off && <p className="dim">{auth ? 'Falta la clave de la pantalla: abre la dirección con ?key=TU_CLAVE' : 'Sin conexión, reintentando…'}</p>}
       {!d ? <p className="dim">Cargando…</p> : (
         <div className="sc-grid">
           <div className="sc-card hero">
@@ -115,7 +116,7 @@ export default function Screen() {
           <div className="sc-card">
             <div className="sc-label"><i className="dot next" />Siguientes turnos</div>
             {d.next.length === 0 && <p className="dim">No hay más citas por ahora</p>}
-            {d.next.map((x, i) => (
+            {d.next.slice(0, 4).map((x, i) => (
               <div className="sc-item" key={i}><span>{x.name}<small>{x.service}</small></span><span className="pill">{hm(x.starts_at)}</span></div>
             ))}
           </div>

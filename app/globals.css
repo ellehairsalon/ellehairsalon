@@ -27,7 +27,7 @@ button:focus-visible,input:focus-visible,a:focus-visible { outline:2px solid var
 .ghost:disabled { opacity:.45; cursor:not-allowed; }
 .nav { display:flex; justify-content:space-between; margin-top:12px; }
 .appt { padding:14px 0; border-bottom:1px solid var(--line); }
-.time { font-family:'Newsreader',Georgia,serif; font-size:1.25rem; }
+.time { font-family:'Source Serif 4 Variable',Georgia,serif; font-size:1.25rem; }
 .wide { max-width:760px; }
 .cap { text-transform:capitalize; font-size:2rem; margin:12px 0 4px; }
 .bday { background:var(--card); border:1px solid var(--line); padding:10px 12px; margin:8px 0; }
@@ -80,7 +80,7 @@ a.ghost { display:inline-block; }
   background:linear-gradient(160deg,rgba(176,90,54,.55),rgba(255,255,255,.05)); }
 .sc-label { display:flex; align-items:center; gap:10px; font-size:0.875rem; font-weight:600; letter-spacing:.16em; text-transform:uppercase; color:#e8b89c; margin-bottom:14px; }
 .hero .sc-label { justify-content:center; font-size:1rem; }
-.big { font-family:'Newsreader',Georgia,serif; font-size:clamp(4rem,11vw,8.5rem); line-height:1; letter-spacing:-.02em; }
+.big { font-family:'Source Serif 4 Variable',Georgia,serif; font-size:clamp(4rem,11vw,8.5rem); line-height:1; letter-spacing:-.02em; }
 .big.small { font-size:clamp(3rem,8vw,6rem); }
 .big .unit { font-family:system-ui,sans-serif; font-size:.28em; letter-spacing:0; margin:0 .25em 0 .12em; opacity:.7; }
 .when { margin-top:14px; font-size:2rem; opacity:.9; font-variant-numeric:tabular-nums; }
@@ -136,7 +136,7 @@ textarea { width:100%; margin-top:4px; padding:11px; border:1px solid var(--line
 
 /* Ajustes plegables */
 .fold { border-bottom:1px solid var(--line); }
-.fold > summary { padding:16px 0; font-family:'Newsreader',Georgia,serif; font-size:1.25rem; cursor:pointer; list-style:none; display:flex; justify-content:space-between; }
+.fold > summary { padding:16px 0; font-family:'Source Serif 4 Variable',Georgia,serif; font-size:1.25rem; cursor:pointer; list-style:none; display:flex; justify-content:space-between; }
 .fold > summary::-webkit-details-marker { display:none; }
 .fold > summary::after { content:'›'; color:var(--muted); transition:transform .15s; }
 .fold[open] > summary::after { transform:rotate(90deg); }
@@ -199,7 +199,7 @@ a.nb { word-break:normal; }
 .ticket { text-align:left; background:var(--card); border-radius:22px; box-shadow:var(--card-shadow); overflow:hidden; margin:6px 0 18px; }
 .t-top { padding:20px 22px 18px; color:#fff; background:linear-gradient(116deg,#b05a36,#c98563); position:relative; }
 .t-date { font-size:1rem; opacity:.85; }
-.t-time { font-family:'Newsreader',Georgia,serif; font-size:2.75rem; line-height:1.05; letter-spacing:-.01em; margin-top:2px; }
+.t-time { font-family:'Source Serif 4 Variable',Georgia,serif; font-size:2.75rem; line-height:1.05; letter-spacing:-.01em; margin-top:2px; }
 .t-body { padding:8px 22px 4px; border-bottom:2px dashed var(--line); position:relative; }
 .t-body::before,.t-body::after { content:''; position:absolute; bottom:-11px; width:20px; height:20px; border-radius:50%; background:var(--bg); }
 .t-body::before { left:-10px; } .t-body::after { right:-10px; }
@@ -256,14 +256,14 @@ a.linkbtn { display:block; text-align:center; text-decoration:none; color:#fff; 
 .pill-link { display:inline-block; margin-top:6px; padding:4px 12px; border-radius:999px; background:#dff5e9; color:#14703d; text-decoration:none; font-size:0.875rem; font-weight:600; }
 .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:14px 0 6px; }
 .stats div { background:var(--card); border-radius:16px; padding:14px 10px; text-align:center; box-shadow:var(--card-shadow); }
-.stats b { display:block; font-family:'Newsreader',Georgia,serif; font-size:2rem; font-weight:400; }
+.stats b { display:block; font-family:'Source Serif 4 Variable',Georgia,serif; font-size:2rem; font-weight:400; }
 .stats small { color:var(--muted); }
 .appt { background:var(--card); border:0; border-radius:14px; padding:12px 14px; margin:8px 0; box-shadow:var(--card-shadow); }
 .day-card { display:flex; align-items:center; gap:14px; padding:12px 14px; background:var(--card); border-radius:18px; box-shadow:var(--card-shadow); text-decoration:none; color:inherit; }
 .day-card.today { box-shadow:0 0 0 2px var(--berry),var(--card-shadow); }
 .day-badge { flex:none; width:54px; padding:8px 0; text-align:center; border-radius:14px; background:var(--berry-soft); color:var(--berry); }
 .day-badge small { display:block; text-transform:capitalize; font-size:0.75rem; }
-.day-badge b { font-family:'Newsreader',Georgia,serif; font-size:1.5rem; font-weight:400; }
+.day-badge b { font-family:'Source Serif 4 Variable',Georgia,serif; font-size:1.5rem; font-weight:400; }
 .day-main { flex:1; min-width:0; }
 .day-title { font-weight:600; }
 .day-item { font-size:0.875rem; color:#515151; }
@@ -281,7 +281,7 @@ a.linkbtn { display:block; text-align:center; text-decoration:none; color:#fff; 
 .ago { font-size:0.875rem; padding:3px 10px; border-radius:999px; background:#ece3d3; color:var(--muted); white-space:nowrap; }
 .req-when { display:flex; flex-wrap:wrap; align-items:baseline; gap:10px; margin:14px 0 8px; }
 .req-day { font-weight:600; }
-.req-hour { font-family:'Newsreader',Georgia,serif; font-size:2rem; line-height:1; }
+.req-hour { font-family:'Source Serif 4 Variable',Georgia,serif; font-size:2rem; line-height:1; }
 .chip-prio { padding:3px 10px; border-radius:999px; background:var(--amber-bg); color:var(--amber); border:1px solid var(--amber-line); font-size:0.875rem; font-weight:700; }
 .req-items { background:var(--bg); border-radius:16px; padding:4px 12px; }
 .req-item { display:flex; align-items:center; gap:12px; padding:10px 0; }
@@ -403,8 +403,8 @@ a.linkbtn { display:block; text-align:center; text-decoration:none; color:#fff; 
 .blk { padding:4px 10px; line-height:1.3; }
 
 /* ===== Tema "pergamino": crema cálido, terracota y títulos editoriales ===== */
-body { font-family:'Inter',system-ui,-apple-system,sans-serif; letter-spacing:-.011em; }
-h1,h2,.time,.cap,.t-time,.dayh { font-family:'Newsreader',Georgia,'Times New Roman',serif; font-weight:400; letter-spacing:-.01em; }
+body { font-family:'Hanken Grotesk Variable',system-ui,-apple-system,sans-serif; letter-spacing:-.02em; }
+h1,h2,.time,.cap,.t-time,.dayh { font-family:'Source Serif 4 Variable',Georgia,'Times New Roman',serif; font-weight:400; letter-spacing:-.01em; }
 h1 { font-size:2.75rem; line-height:1; margin-top:4px; }
 h2 { font-size:2rem; line-height:1.1; margin:40px 0 10px; }
 h1 em, h2 em { font-style:italic; font-weight:300; }
@@ -479,3 +479,30 @@ main > section, main > .done { animation:rise .38s cubic-bezier(.2,.7,.2,1) both
   *, *::before, *::after { animation-duration:.01ms !important; animation-delay:0s !important; transition-duration:.01ms !important; scroll-behavior:auto !important; }
 }
 .seal { font-size:2rem; font-weight:600; }
+
+h1, h2, .t-time, .time, .big, .req-hour, .stats b, .dayh, .fold > summary { font-optical-sizing:auto; }
+h1 em, h2 em { font-weight:300; }
+
+/* ===== Pantalla en vivo: se ajusta a cualquier tamaño de pantalla (TV, tablet, computadora) sin hacer scroll ===== */
+@media (min-width:801px) {
+  .screen { display:flex; flex-direction:column; overflow:hidden; font-size:2vh; line-height:1.3; padding:2.2em 2.8em; }
+  .screen header { flex:none; margin-bottom:1.3em; }
+  .screen h1 { font-size:2.6em; }
+  .screen .sub { font-size:.9em; }
+  .screen .clock { font-size:2.6em; }
+  .sc-grid { flex:1; min-height:0; gap:1.1em; grid-template-columns:1.15fr 1fr; grid-template-rows:minmax(0,.8fr) minmax(0,.8fr) minmax(0,1.5fr); }
+  .sc-card { border-radius:1.4em; padding:1.1em 1.5em; overflow:hidden; min-height:0; }
+  .sc-card.hero { grid-row:span 3; }
+  .sc-label { font-size:.8em; margin-bottom:.6em; }
+  .hero .sc-label { font-size:.9em; }
+  .big { font-size:min(7.5em, 24vw); }
+  .big.small { font-size:min(4.2em, 16vw); }
+  .when { font-size:1.7em; margin-top:.5em; }
+  .hero .foot { font-size:.9em; margin-top:1.6em; }
+  .sc-item { font-size:1.1em; padding:.5em 0; gap:1em; }
+  .sc-item small { font-size:.75em; }
+  .sc-item .right, .pill { font-size:1.05em; }
+  .pill { padding:.1em .7em; }
+  .bar { height:.35em; margin-top:.5em; }
+  .dot { width:.55em; height:.55em; }
+}
