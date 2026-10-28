@@ -81,7 +81,7 @@ export default function DayView({ appts, isToday, policyHours = 10, bonus }) {
               ...(a.early || a.early_fee > 0 ? {} : { background: colorOf(a.services.service_categories?.name) }),
             }}
             onClick={() => { setSel(a); setNote(a.notes || ''); }}>
-            <b>{a.guest_name || a.clients.full_name}{(a.early || a.early_fee > 0) && ' 🌅'}</b><span>{svcEmoji(a.services.name, a.services.service_categories?.name)} {a.services.name} · {hm(a.starts_at)}</span>
+            <b>{a.guest_name || a.clients.full_name}{(a.early || a.early_fee > 0) && ' 🌅'}{a.change_starts_at && ' ⏳'}</b><span>{svcEmoji(a.services.name, a.services.service_categories?.name)} {a.services.name} · {hm(a.starts_at)}</span>
           </button>
         ))}
       </div>
@@ -93,54 +93,68 @@ export default function DayView({ appts, isToday, policyHours = 10, bonus }) {
         </div>
       )}
 
-      {sel && (
-        <div className="scrim" onClick={() => setSel(null)}>
-          <div className="sheet" onClick={(e) => e.stopPropagation()}>
-            <h2>{svcEmoji(sel.services.name, sel.services.service_categories?.name)} {sel.guest_name || sel.clients.full_name}</h2>
-            {sel.guest_name && <p className="note" style={{ marginTop: -4 }}>Reservó {sel.clients.full_name}</p>}
-            <p>
-              {sel.services.name} · {hm(sel.starts_at)} – {hm(sel.ends_at)}<br />
-              {sel.stylists.name} · ${sel.price}{(sel.early || sel.early_fee > 0) && ` · 🌅 Turno prioritario${sel.early_fee > 0 ? ` (+$${sel.early_fee})` : ''}`}
-              {STATUS[sel.status] && ` · ${STATUS[sel.status]}`}
-              {sel.status === 'confirmed' && sel.started_at && ' · En atención'}
-              {sel.status === 'confirmed' && !sel.started_at && sel.checked_in_at && ' · En espera'}
-            </p>
-            {sel.client_note && <div className="bday" style={{ whiteSpace: 'pre-wrap' }}><b>📝 Nota del cliente:</b> {sel.client_note}</div>}
-            {sel.clients.internal_notes && (
-              <div className="bday" style={{ whiteSpace: 'pre-wrap' }}><b>Nota del cliente:</b> {sel.clients.internal_notes}</div>
-            )}
-            <div className="actions">
-              <a className="ghost" href={`https://wa.me/${sel.clients.phone.replace(/\D/g, '')}`}>WhatsApp</a>
-              <a className="ghost" href={`https://wa.me/${sel.clients.phone.replace(/\D/g, '')}?text=${encodeURIComponent(
-                `Hola ${first(sel.clients.full_name)}, te recordamos tu cita de ${sel.services.name} el ${longDate(sel.starts_at)} a las ${hm(sel.starts_at)}. ¡Te esperamos en Elle Hair Salon!`)}`}>Recordar</a>
-              <a className="ghost" href={`/admin/clientas/${sel.client_id}`}>Ficha</a>
+      {sel && (() => {
+        const wa = `https://wa.me/${sel.clients.phone.replace(/\D/g, '')}`;
+        const st = sel.status;
+        const live = sel.started_at && st === 'confirmed';
+        const here = !live && sel.checked_in_at && st === 'confirmed';
+        return (
+          <div className="modal-scrim" onClick={() => setSel(null)}>
+            <div className="modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+              <button className="modal-x" onClick={() => setSel(null)} aria-label="Cerrar">✕</button>
+              <div className="m-head">
+                <span className="m-emo">{svcEmoji(sel.services.name, sel.services.service_categories?.name)}</span>
+                <div>
+                  <h2>{sel.guest_name || sel.clients.full_name}</h2>
+                  {sel.guest_name && <small>Reservó {sel.clients.full_name}</small>}
+                </div>
+              </div>
+              <div className="m-chips">
+                <span className="m-chip">{sel.services.name}</span>
+                <span className="m-chip">🕒 {hm(sel.starts_at)} – {hm(sel.ends_at)}</span>
+                <span className="m-chip">{sel.stylists.name}</span>
+                {(sel.early || sel.early_fee > 0) && <span className="m-chip gold">🌅 Turno prioritario</span>}
+                {STATUS[st] && <span className="m-chip">{STATUS[st]}</span>}
+                {live && <span className="m-chip ok">En atención</span>}
+                {here && <span className="m-chip warn">En espera</span>}
+              </div>
+              {sel.change_starts_at && (
+                <a className="m-alert" href="/admin/pendientes">⏳ Pidió cambiar su cita a {longDate(sel.change_starts_at)} a las {hm(sel.change_starts_at)}. <b>Responder →</b></a>
+              )}
+              {sel.client_note && <div className="m-note"><b>📝 Nota del cliente</b>{sel.client_note}</div>}
+              {sel.clients.internal_notes && <div className="m-note"><b>Nota interna</b>{sel.clients.internal_notes}</div>}
+
+              <div className="m-grid">
+                <a className="btn wa wide2" href={wa}>💬 Escribir por WhatsApp</a>
+                <a className="btn soft" href={`${wa}?text=${encodeURIComponent(
+                  `Hola ${first(sel.clients.full_name)}, te recordamos tu cita de ${sel.services.name} el ${longDate(sel.starts_at)} a las ${hm(sel.starts_at)}. ¡Te esperamos en Elle Hair Salon!`)}`}>Recordar cita</a>
+                <a className="btn soft" href={`/admin/clientas/${sel.client_id}`}>Ficha</a>
+                {st === 'confirmed' && (
+                  <a className="btn soft wide2" href={waLink(sel.clients.phone, confirmText(sel, window.location.origin, policyHours, sel.group_id ? appts.filter((x) => x.group_id === sel.group_id) : null, bonus))}>Reenviar confirmación</a>
+                )}
+              </div>
+
+              <textarea rows={2} placeholder="Nota de esta visita (ej. fórmula del tinte)" value={note} onChange={(e) => setNote(e.target.value)} />
+              <button className="btn soft sm" disabled={busy} onClick={() => call(sel.id, 'note', { notes: note }).then((j) => j && setSel(null))}>Guardar nota</button>
+
+              {st === 'pending' && <a className="btn primary full" href="/admin/pendientes">Responder solicitud</a>}
+              {st === 'confirmed' && (
+                <div className="m-flow">
+                  <div className="m-row">
+                    {!sel.started_at && !sel.checked_in_at && <button className="btn tint" disabled={busy} onClick={() => quick(sel, 'checkin')}>Llegó</button>}
+                    {!sel.started_at && <button className="btn tint" disabled={busy} onClick={() => quick(sel, 'start')}>Empezar</button>}
+                    <button className="btn primary" disabled={busy} onClick={() => act(sel, 'complete')}>✓ Terminó</button>
+                  </div>
+                  <div className="m-row end">
+                    <button className="btn danger" disabled={busy} onClick={() => act(sel, 'no_show')}>No vino</button>
+                    <button className="btn danger" disabled={busy} onClick={() => act(sel, 'cancel')}>Cancelar cita</button>
+                  </div>
+                </div>
+              )}
             </div>
-            <textarea rows={2} placeholder="Nota de esta visita (ej. fórmula del tinte)" value={note} onChange={(e) => setNote(e.target.value)} />
-            <div className="actions">
-              <button className="ghost" disabled={busy} onClick={() => call(sel.id, 'note', { notes: note }).then((j) => j && setSel(null))}>Guardar nota</button>
-            </div>
-            {sel.status === 'pending' && (
-              <div className="actions">
-                <a className="ghost" href="/admin/pendientes">Responder solicitud</a>
-              </div>
-            )}
-            {sel.status === 'confirmed' && (
-              <div className="actions">
-                <a className="ghost" href={waLink(sel.clients.phone, confirmText(sel, window.location.origin, policyHours, sel.group_id ? appts.filter((x) => x.group_id === sel.group_id) : null, bonus))}>Reenviar confirmación</a>
-              </div>
-            )}
-            {sel.status === 'confirmed' && (
-              <div className="actions">
-                {!sel.started_at && !sel.checked_in_at && <button className="ghost" disabled={busy} onClick={() => quick(sel, 'checkin')}>Llegó</button>}
-                {!sel.started_at && <button className="ghost" disabled={busy} onClick={() => quick(sel, 'start')}>Empezar</button>}
-                <button className="cta" disabled={busy} onClick={() => act(sel, 'complete')}>Terminó</button>
-                <button className="ghost" disabled={busy} onClick={() => act(sel, 'no_show')}>No vino</button>
-                <button className="ghost" disabled={busy} onClick={() => act(sel, 'cancel')}>Cancelar</button>
-              </div>
-            )}
           </div>
-        </div>
-      )}
+        );
+      })()}
     </>
   );
 }

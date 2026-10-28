@@ -198,21 +198,29 @@ export default function Booking({ showPrices = false, categories, review = true,
               <h3>¿Qué servicio se hará?</h3>
             </>
           ) : <h2>¿Qué te gustaría <em>hacerte</em>?</h2>}
-          <div className="tiles">
-            {categories.map((c) => (
-              <button key={c.id} className={'tile' + (cat === c.id ? ' on' : '')} onClick={() => setCat(cat === c.id ? null : c.id)}>
-                {c.name}<small>{c.services.length} {c.services.length === 1 ? 'servicio' : 'servicios'}</small>
-              </button>
-            ))}
-          </div>
-          {selCat && selCat.services.map((s) => (
-            <button key={s.id} className="row" onClick={() => pickService(s)}>
-              <span><span className="semo">{svcEmoji(s.name, selCat.name)}</span>{s.name}</span><span className="rmeta">
-                {showPrices && priceLabel(s.price, s.price_from) && <b className="rprice">{s.price_from && <em>desde </em>}{money(s.price)}</b>}
-                <small className="rdur">◷ {dur(s.duration_min)}</small>
-              </span>
-            </button>
-          ))}
+          {!selCat && (
+            <div className="tiles">
+              {categories.map((c) => (
+                <button key={c.id} className="tile" onClick={() => setCat(c.id)}>
+                  {c.name}<small>{c.services.length} {c.services.length === 1 ? 'servicio' : 'servicios'}</small>
+                </button>
+              ))}
+            </div>
+          )}
+          {selCat && (
+            <div className="svc-view" key={selCat.id}>
+              <button className="lnk" onClick={() => setCat(null)}>‹ Todas las categorías</button>
+              <h3 className="svc-cat">{selCat.name}</h3>
+              {selCat.services.map((s) => (
+                <button key={s.id} className="row" onClick={() => pickService(s)}>
+                  <span><span className="semo">{svcEmoji(s.name, selCat.name)}</span>{s.name}</span><span className="rmeta">
+                    {showPrices && priceLabel(s.price, s.price_from) && <b className="rprice">{s.price_from && <em>desde </em>}{money(s.price)}</b>}
+                    <small className="rdur">◷ {dur(s.duration_min)}</small>
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
           {error && <p className="error">{error}</p>}
         </section>
       )}

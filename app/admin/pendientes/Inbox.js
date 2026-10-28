@@ -1,7 +1,7 @@
 'use client';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { waLink, confirmText, rejectText } from '@/lib/wa';
+import { waLink, confirmText, rejectText, proposeText, changeOkText, changeNoText } from '@/lib/wa';
 import { svcEmoji } from '@/lib/emoji';
 import { money } from '@/lib/priority';
 
@@ -25,17 +25,50 @@ export default function Inbox({ items, hours = 10, bonus, feeType = 'fixed', fee
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
-  async function answer(a, action) {
+  const [prop, setProp] = useState(null); // { id, date, slots, pick }: eligiendo otra hora para proponer
+  const strip = useMemo(() => Array.from({ length: 14 }, (_, i) => {
+    const d = new Date(Date.now() - 5 * 3600000 + i * 864e5);
+    const iso = d.toISOString().slice(0, 10);
+    const wd = new Date(iso + 'T12:00:00Z').toLocaleDateString('es-EC', { weekday: 'short', timeZone: 'UTC' }).replace('.', '');
+    return { iso, wd: i === 0 ? 'Hoy' : wd.charAt(0).toUpperCase() + wd.slice(1), n: +iso.slice(8) };
+  }), []);
+
+  // Después de mover la reserva a la nueva hora, el mensaje de WhatsApp debe hablar de la hora nueva.
+  const moved = (a, iso) => {
+    const shift = +new Date(iso) - +new Date(a.starts_at);
+    const people = (a.people || [a]).map((x) => ({ ...x, starts_at: new Date(+new Date(x.starts_at) + shift).toISOString() }));
+    return { ...a, starts_at: iso, people };
+  };
+
+  async function answer(a, action, extra = {}) {
     setBusy(true); setError('');
     const r = await fetch('/api/admin/appt', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: a.id, action }),
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: a.id, action, ...extra }),
     });
     const j = await r.json().catch(() => ({}));
     setBusy(false);
     if (!r.ok) { setError(j.error || 'No se pudo completar.'); router.refresh(); return; }
-    setAsk(null);
-    setDone((d) => ({ ...d, [a.id]: { state: action === 'confirm' ? 'confirmed' : 'rejected', item: a } }));
+    setAsk(null); setProp(null);
+    const state = { confirm: 'confirmed', reject: 'rejected', propose: 'proposed', confirm_change: 'changed', reject_change: 'kept' }[action];
+    const item = action === 'propose' ? moved(a, extra.starts_at) : action === 'confirm_change' ? moved(a, a.new_starts_at) : a;
+    if (action === 'withdraw') { router.refresh(); return; }
+    setDone((d) => ({ ...d, [a.id]: { state, item } }));
     router.refresh(); // actualiza el contador de la barra
+  }
+
+  // Los 3 horarios libres más cercanos a lo que pidió el cliente: un toque y listo.
+  async function openSuggest(a) {
+    setProp({ id: a.id, date: null, slots: null, pick: null });
+    const r = await fetch(`/api/admin/propose?id=${a.id}`);
+    const j = await r.json().catch(() => ({}));
+    setProp((p) => (p && p.id === a.id && !p.date ? { ...p, slots: j.slots || [] } : p));
+  }
+
+  async function pickDate(a, date) {
+    setProp({ id: a.id, date, slots: null, pick: null });
+    const r = await fetch(`/api/admin/propose?id=${a.id}&date=${date}`);
+    const j = await r.json().catch(() => ({}));
+    setProp((p) => (p && p.id === a.id && p.date === date ? { ...p, slots: j.slots || [] } : p));
   }
 
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
@@ -63,9 +96,21 @@ export default function Inbox({ items, hours = 10, bonus, feeType = 'fixed', fee
               <span className="ago">{ago(a.created_at)}</span>
             </div>
 
+            {a.kind === 'proposal' && !st && (
+              <div className="req-change wait">
+                <b>⏳ Esperando que el cliente acepte</b>
+                <span>Pidió: {dayLabel(a.starts_at)} · {hmx(a.starts_at)}</span>
+              </div>
+            )}
+            {a.kind === 'change' && !st && (
+              <div className="req-change">
+                <b>🔁 Quiere cambiar su cita</b>
+                <span>Ahora: {dayLabel(a.starts_at)} · {hmx(a.starts_at)}</span>
+              </div>
+            )}
             <div className="req-when">
-              <span className="req-day">{dayLabel(a.starts_at)}</span>
-              <span className="req-hour">{hmx(a.starts_at)}</span>
+              <span className="req-day">{dayLabel(a.kind !== 'new' ? a.new_starts_at : a.starts_at)}</span>
+              <span className="req-hour">{hmx(a.kind !== 'new' ? a.new_starts_at : a.starts_at)}</span>
               {(a.early || a.early_fee > 0) && <span className="chip-prio">🌅 Prioritario {feeType === 'percent' ? `+${+feeValue}%` : a.early_fee > 0 ? `+${money(a.early_fee)}` : ''}</span>}
             </div>
 
@@ -75,7 +120,7 @@ export default function Inbox({ items, hours = 10, bonus, feeType = 'fixed', fee
                   <span className="emo">{svcEmoji(x.services.name, x.services.service_categories?.name)}</span>
                   <div className="who">
                     <b>{x.services.name}</b>
-                    <small>{people.length > 1 ? `${x.guest_name || a.clients.full_name.split(' ')[0]} · ${hmx(x.starts_at)} · ` : ''}{dur(x.services.duration_min)}</small>
+                    <small>{people.length > 1 ? `${x.guest_name || a.clients.full_name.split(' ')[0]} · ${hmx(a.kind !== 'new' && x.change_starts_at ? x.change_starts_at : x.starts_at)} · ` : ''}{dur(x.services.duration_min)}</small>
                   </div>
                 </div>
               ))}
@@ -83,17 +128,69 @@ export default function Inbox({ items, hours = 10, bonus, feeType = 'fixed', fee
 
             {a.client_note && <div className="req-note">📝 {a.client_note}</div>}
 
-            {!st && ask !== a.id && (
+            {!st && a.kind === 'proposal' && (
               <div className="req-actions">
-                <button className="cta ok" disabled={busy} onClick={() => answer(a, 'confirm')}>✓ Confirmar</button>
-                <button className="ghost" disabled={busy} onClick={() => setAsk(a.id)}>No puedo / otra hora</button>
+                <a className="cta wa" href={waLink(a.clients.phone, proposeText(moved(a, a.new_starts_at), origin, a.people.length > 1 ? moved(a, a.new_starts_at).people : null))}>Reenviar propuesta por WhatsApp</a>
+                <button className="ghost" disabled={busy} onClick={() => answer(a, 'withdraw')}>Retirar propuesta</button>
+              </div>
+            )}
+            {!st && a.kind !== 'proposal' && ask !== a.id && prop?.id !== a.id && (
+              <div className="req-actions">
+                <button className="cta ok" disabled={busy} onClick={() => answer(a, a.kind === 'change' ? 'confirm_change' : 'confirm')}>{a.kind === 'change' ? '✓ Confirmar el cambio' : '✓ Confirmar'}</button>
+                {a.kind === 'change'
+                  ? <button className="ghost" disabled={busy} onClick={() => setAsk(a.id)}>No puedo</button>
+                  : <button className="ghost" disabled={busy} onClick={() => openSuggest(a)}>No puedo / otra hora</button>}
+              </div>
+            )}
+            {!st && prop?.id === a.id && !prop.date && (
+              <div className="req-prop">
+                <p><b>Propón otra hora</b> · toca una y se la enviamos por WhatsApp</p>
+                {prop.slots === null && <p className="note">Buscando los horarios más cercanos…</p>}
+                {prop.slots?.length === 0 && <p className="note">No encontré horarios libres en los próximos días.</p>}
+                <div className="sug">
+                  {prop.slots?.map((x) => (
+                    <button key={x.starts_at} className={'sug-btn' + (x.early ? ' early' : '')} disabled={busy} onClick={() => answer(a, 'propose', { starts_at: x.starts_at })}>
+                      <small>{dayLabel(x.starts_at)}</small><b>{hmx(x.starts_at)}</b>{x.early && <i>🌅</i>}
+                    </button>
+                  ))}
+                </div>
+                <div className="req-actions">
+                  <button className="ghost" onClick={() => pickDate(a, strip[0].iso)}>Elegir otro día</button>
+                  <button className="ghost" onClick={() => setProp(null)}>Volver</button>
+                </div>
+                <button className="lnk" onClick={() => { setProp(null); setAsk(a.id); }}>Rechazar sin proponer hora</button>
+              </div>
+            )}
+            {!st && prop?.id === a.id && prop.date && (
+              <div className="req-prop">
+                <p><b>Elige otro día y hora</b> · el cliente la acepta con un toque</p>
+                <div className="na-days">
+                  {strip.map((d) => (
+                    <button key={d.iso} className={'na-day' + (prop.date === d.iso ? ' on' : '')} onClick={() => pickDate(a, d.iso)}>
+                      <small>{d.wd}</small><b>{d.n}</b>
+                    </button>
+                  ))}
+                </div>
+                {prop.slots === null && <p className="note">Buscando horarios…</p>}
+                {prop.slots?.length === 0 && <p className="note">No hay horarios libres ese día.</p>}
+                <div className="na-times">
+                  {prop.slots?.map((x) => (
+                    <button key={x.starts_at} className={'na-time' + (x.early ? ' early' : '') + (prop.pick === x.starts_at ? ' sel' : '')} onClick={() => setProp({ ...prop, pick: x.starts_at })}>{x.time}</button>
+                  ))}
+                </div>
+                <div className="req-actions">
+                  <button className="cta ok" disabled={busy || !prop.pick} onClick={() => answer(a, 'propose', { starts_at: prop.pick })}>
+                    {prop.pick ? `Proponer ${dayLabel(prop.pick)} · ${hmx(prop.pick)}` : 'Elige una hora'}
+                  </button>
+                  <button className="ghost" onClick={() => openSuggest(a)}>Volver</button>
+                </div>
               </div>
             )}
             {!st && ask === a.id && (
               <div className="req-ask">
-                <p>¿Rechazar esta solicitud? Se libera el horario.</p>
+                <p>{a.kind === 'change' ? 'El cliente se queda con su cita original. ¿No puedes hacer el cambio?' : '¿Rechazar esta solicitud? Se libera el horario.'}</p>
                 <div className="req-actions">
-                  <button className="cta" disabled={busy} onClick={() => answer(a, 'reject')}>Sí, rechazar</button>
+                  <button className="cta" disabled={busy} onClick={() => answer(a, a.kind === 'change' ? 'reject_change' : 'reject')}>{a.kind === 'change' ? 'Sí, mantener la original' : 'Sí, rechazar'}</button>
                   <button className="ghost" onClick={() => setAsk(null)}>Volver</button>
                 </div>
               </div>
@@ -104,10 +201,28 @@ export default function Inbox({ items, hours = 10, bonus, feeType = 'fixed', fee
                 <a className="cta wa" href={waLink(a.clients.phone, confirmText(a, origin, hours, a.people, bonus))} onClick={() => forget(a.id)}>Enviar confirmación por WhatsApp</a>
               </div>
             )}
+            {st === 'proposed' && (
+              <div className="req-done">
+                <p>✓ Propuesta lista. Falta enviársela al cliente por WhatsApp:</p>
+                <a className="cta wa" href={waLink(a.clients.phone, proposeText(a, origin, a.people.length > 1 ? a.people : null))} onClick={() => forget(a.id)}>Enviar propuesta por WhatsApp</a>
+              </div>
+            )}
+            {st === 'changed' && (
+              <div className="req-done">
+                <p>✓ Cambio confirmado. Falta avisarle al cliente:</p>
+                <a className="cta wa" href={waLink(a.clients.phone, changeOkText(a, origin, hours, a.people.length > 1 ? a.people : null))} onClick={() => forget(a.id)}>Enviar confirmación por WhatsApp</a>
+              </div>
+            )}
+            {st === 'kept' && (
+              <div className="req-done">
+                <p>Se mantiene la cita original. Falta avisarle al cliente:</p>
+                <a className="cta wa" href={waLink(a.clients.phone, changeNoText(a, origin))} onClick={() => forget(a.id)}>Avisar por WhatsApp</a>
+              </div>
+            )}
             {st === 'rejected' && (
               <div className="req-done">
                 <p>Solicitud rechazada. Falta avisarle al cliente:</p>
-                <a className="cta wa" href={waLink(a.clients.phone, rejectText(a, origin, a.people))} onClick={() => forget(a.id)}>Avisar por WhatsApp (proponer otra hora)</a>
+                <a className="cta wa" href={waLink(a.clients.phone, rejectText(a, origin, a.people))} onClick={() => forget(a.id)}>Avisar por WhatsApp</a>
               </div>
             )}
           </div>

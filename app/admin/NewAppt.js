@@ -2,6 +2,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { svcEmoji } from '@/lib/emoji';
+import { waLink, confirmText } from '@/lib/wa';
 
 const TZ = 'America/Guayaquil';
 const fmt = (iso) => new Date(iso).toLocaleString('es-EC', { weekday: 'long', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: TZ });
@@ -17,7 +18,7 @@ const days = () => Array.from({ length: 14 }, (_, i) => {
   return { iso, wd: i === 0 ? 'Hoy' : cap(wd), n: +iso.slice(8) };
 });
 
-export default function NewAppt() {
+export default function NewAppt({ policyHours = 10, bonus }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(1);
@@ -35,6 +36,7 @@ export default function NewAppt() {
   const [found, setFound] = useState([]);
   const [known, setKnown] = useState(null); // null = sin buscar, false = cliente nuevo, objeto = ya existe
   const [okMsg, setOkMsg] = useState('');
+  const [made, setMade] = useState(null); // cita recién creada: permite enviar la confirmación por WhatsApp
   const strip = useMemo(days, [open]);
 
   const cats = useMemo(() => {
@@ -45,7 +47,7 @@ export default function NewAppt() {
     }
     return g;
   }, [svcs]);
-  const curCat = cats.find((c) => c.name === cat) || cats[0];
+  const curCat = cats.find((c) => c.name === cat) || null; // los servicios aparecen al elegir una categoría
 
   useEffect(() => {
     if (open && !svcs.length)
@@ -85,7 +87,7 @@ export default function NewAppt() {
     return () => clearTimeout(t);
   }, [name, phone, step]);
 
-  function close() { setKnown(null); setFound([]); setOkMsg(''); setOpen(false); setStep(1); setSvc(null); setSlot(null); setDate(''); setName(''); setPhone(''); setErr(''); }
+  function close() { setMade(null); setKnown(null); setFound([]); setOkMsg(''); setOpen(false); setStep(1); setSvc(null); setSlot(null); setDate(''); setName(''); setPhone(''); setErr(''); }
   function choose(s) { setSlot(s); setStep(3); }
 
   async function save() {
@@ -99,9 +101,10 @@ export default function NewAppt() {
     const j = await r.json();
     setBusy(false);
     if (!r.ok) { setErr(j.error); return; }
-    setOkMsg(slot.now ? 'Ya está en atención' : `Agendada · ${cap(fmt(slot.starts_at))}`);
     router.refresh();
-    setTimeout(close, 1700);
+    if (slot.now || !j.appt) { setOkMsg(slot.now ? 'Ya está en atención' : 'Cita agendada'); setTimeout(close, 1700); return; }
+    setMade(j.appt);
+    setOkMsg(`Agendada · ${cap(fmt(slot.starts_at))}`);
   }
 
   const groups = useMemo(() => {
@@ -131,6 +134,15 @@ export default function NewAppt() {
                 <div className="na-check">✓</div>
                 <b>{okMsg}</b>
                 <small>{name.trim()} · {svc?.name}</small>
+                {made && (
+                  <div className="na-ok-actions">
+                    <a className="btn wa full" onClick={() => setTimeout(close, 400)}
+                      href={waLink(made.phone, confirmText({ clients: { full_name: made.client_name }, services: { name: made.service }, starts_at: made.starts_at, early_fee: made.early_fee, early: made.early, manage_token: made.manage_token }, window.location.origin, policyHours, null, bonus))}>
+                      💬 Enviar confirmación por WhatsApp
+                    </a>
+                    <button className="btn soft full" onClick={close}>Listo, sin enviar</button>
+                  </div>
+                )}
               </div>
             ) : (<>
             <div className="na-bar">
@@ -151,21 +163,25 @@ export default function NewAppt() {
 
             {step === 1 && (
               <>
-                <div className="na-cats">
+                <div className="na-catgrid">
                   {cats.map((c) => (
-                    <button key={c.name} className={'na-cat' + (curCat?.name === c.name ? ' on' : '')} onClick={() => setCat(c.name)}>{c.name}</button>
-                  ))}
-                </div>
-                <div className="na-grid">
-                  {curCat?.items.map((s) => (
-                    <button key={s.id} className="na-tile" onClick={() => { setSvc(s); setStep(2); }}>
-                      <span className="na-emo">{svcEmoji(s.name, curCat.name)}</span>
-                      <b>{s.name}</b>
-                      <small>◷ {dur(s.duration_min)}</small>
+                    <button key={c.name} className={'na-catt' + (curCat?.name === c.name ? ' on' : '')} onClick={() => setCat(curCat?.name === c.name ? null : c.name)}>
+                      <span>{svcEmoji(c.items[0]?.name, c.name)}</span><b>{c.name}</b><small>{c.items.length}</small>
                     </button>
                   ))}
                   {!svcs.length && <p className="note">Cargando…</p>}
                 </div>
+                {curCat && (
+                  <div className="na-grid">
+                    {curCat.items.map((s) => (
+                      <button key={s.id} className="na-tile" onClick={() => { setSvc(s); setStep(2); }}>
+                        <span className="na-emo">{svcEmoji(s.name, curCat.name)}</span>
+                        <b>{s.name}</b>
+                        <small>◷ {dur(s.duration_min)}</small>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </>
             )}
 

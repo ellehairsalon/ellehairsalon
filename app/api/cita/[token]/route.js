@@ -1,7 +1,7 @@
-import { db, getGroupSlots, earlyFeeFor, isEarlyAt } from '@/lib/slots';
+import { db, getGroupSlots, earlyFeeFor, isEarlyAt, moveGroup } from '@/lib/slots';
 import { validEmail, validBirthday } from '@/lib/validate';
 
-const SEL = 'id,client_id,service_id,starts_at,ends_at,price,early_fee,status,group_id,guest_name,services(name,duration_min,price_from),clients(full_name,email,birthday_month,birthday_day)';
+const SEL = 'id,client_id,service_id,starts_at,ends_at,price,early_fee,status,change_starts_at,change_ends_at,group_id,guest_name,services(name,duration_min,price_from),clients(full_name,email,birthday_month,birthday_day)';
 const bad = (error, status) => Response.json({ error }, { status });
 const hoursLeft = (a) => (+new Date(a.starts_at) - Date.now()) / 3600000;
 const minHours = async () =>
@@ -39,6 +39,8 @@ export async function GET(req, { params }) {
       service: a.services.name, starts_at: a.starts_at, status: a.status,
       price: live.reduce((n, x) => n + +x.price, 0), early_fee: live.reduce((n, x) => n + +x.early_fee, 0),
       early: await isEarlyAt(live[0].starts_at),
+      change: a.status === 'confirmed' ? live.find((x) => x.change_starts_at)?.change_starts_at || null : null,
+      proposal: a.status === 'pending' ? live.find((x) => x.change_starts_at)?.change_starts_at || null : null,
       items: live.map((x) => ({ service: x.services.name, price: +x.price, price_from: !!x.services.price_from, guest_name: x.guest_name, starts_at: x.starts_at, ends_at: x.ends_at })),
     },
     canChange, hours, slots, bonus: pc?.early_bonus || 'Lavado con masaje de cuero cabelludo', feeType: pc?.early_fee_type || 'fixed', feeValue: pc?.early_fee_value ?? 0, deadline: +new Date(a.starts_at) - hours * 3600000,
@@ -84,33 +86,43 @@ export async function POST(req, { params }) {
     return Response.json({ ok: true });
   }
 
+  // El cliente acepta la hora que propuso Elena: la solicitud queda confirmada.
+  if (action === 'accept') {
+    const rows = live.filter((x) => x.change_starts_at).sort((x, y) => +new Date(x.change_starts_at) - +new Date(y.change_starts_at));
+    if (a.status !== 'pending' || !rows.length) return bad('Esta propuesta ya no está vigente.', 409);
+    const first = rows[0];
+    const day = new Date(+new Date(first.change_starts_at) - 5 * 3600000).toISOString().slice(0, 10);
+    const { slots } = await getGroupSlots(day, live.map((x) => x.service_id), live.map((x) => x.id), 0);
+    const slot = slots.find((s) => s.starts_at === new Date(first.change_starts_at).toISOString());
+    if (!slot) return bad('Ese horario ya no está libre. Elige otra hora y Elena te confirma.', 409);
+    const moved = await moveGroup(live, first.change_starts_at, slot.stylist_id, { status: 'confirmed', change_starts_at: null, change_ends_at: null, change_stylist_id: null, change_early_fee: null, change_requested_at: null });
+    if (!moved.ok) return bad('Ese horario acaba de ocuparse. Elige otra hora.', 409);
+    return Response.json({ ok: true });
+  }
+
   if (action === 'reschedule') {
     if (a.status === 'confirmed' && hoursLeft(a) < hours) return bad(`Para cambios con menos de ${hours} horas, escríbenos por WhatsApp.`, 403);
     const { slots, items } = await getGroupSlots(String(starts_at).slice(0, 10), live.map((x) => x.service_id), live.map((x) => x.id));
     const slot = slots.find((s) => s.starts_at === starts_at);
     if (!slot) return bad('Ese horario ya no está disponible. Elige otro.', 409);
 
-    // Nuevos horarios, uno tras otro. Se mueven en el orden que evita que se pisen entre ellos.
-    let cursor = +new Date(starts_at);
-    const plan = [];
-    for (let i = 0; i < live.length; i++) {
-      const start = new Date(cursor).toISOString(), end = new Date(cursor + items[i].duration_min * 60000).toISOString();
-      plan.push({ row: live[i], start, end, fee: await earlyFeeFor(start, +live[i].price) });
-      cursor += items[i].duration_min * 60000;
-    }
-    const later = +new Date(starts_at) > +new Date(a.starts_at);
-    const order = later ? [...plan].reverse() : plan;
-    const done = [];
-    for (const x of order) {
-      const { error } = await db.from('appointments')
-        .update({ starts_at: x.start, ends_at: x.end, stylist_id: slot.stylist_id, early_fee: x.fee }).eq('id', x.row.id);
-      if (error) { // deshace lo ya movido para no dejar la reserva a medias
-        for (const d of done.reverse())
-          await db.from('appointments').update({ starts_at: d.row.starts_at, ends_at: d.row.ends_at, early_fee: d.row.early_fee }).eq('id', d.row.id);
-        return bad('Ese horario acaba de ocuparse. Elige otro.', 409);
+    const { data: cfg } = await db.from('salon_settings').select('approval_mode').eq('id', 1).single();
+    // Una cita ya confirmada no se mueve sola: la original se queda y Elena confirma el cambio.
+    if (a.status === 'confirmed' && (cfg?.approval_mode || 'manual') !== 'auto') {
+      let cursor = +new Date(starts_at);
+      for (const row of live) {
+        const ms = +new Date(row.ends_at) - +new Date(row.starts_at);
+        const start = new Date(cursor).toISOString(), end = new Date(cursor + ms).toISOString();
+        await db.from('appointments').update({
+          change_starts_at: start, change_ends_at: end, change_stylist_id: slot.stylist_id,
+          change_early_fee: await earlyFeeFor(start, +row.price), change_requested_at: new Date().toISOString(),
+        }).eq('id', row.id);
+        cursor += ms;
       }
-      done.push(x);
+      return Response.json({ ok: true, requested: true });
     }
+    const moved = await moveGroup(live, starts_at, slot.stylist_id, { change_starts_at: null, change_ends_at: null, change_stylist_id: null, change_early_fee: null, change_requested_at: null });
+    if (!moved.ok) return bad('Ese horario acaba de ocuparse. Elige otro.', 409);
     return Response.json({ ok: true });
   }
   return bad('Acción inválida.', 400);

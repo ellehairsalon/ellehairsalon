@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { WHATSAPP } from '@/lib/config';
-import { PRIORITY_NAME, money, priceLabel } from '@/lib/priority';
+import { PRIORITY_NAME } from '@/lib/priority';
 import { svcEmoji } from '@/lib/emoji';
 
 const days = Array.from({ length: 14 }, (_, i) =>
@@ -14,7 +14,8 @@ const fmt = (iso) => new Date(iso).toLocaleString('es-EC', {
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 
 // Recargo del turno prioritario: porcentaje si así está configurado; si no, el monto (si lo hay)
-const feeLabel = (d, amount) => (d.feeType === 'percent' ? `+${+d.feeValue}%` : +(amount ?? d.appt?.early_fee) > 0 ? `+${money(amount ?? d.appt.early_fee)}` : 'Recargo');
+// (el cliente nunca ve montos en dinero, solo el porcentaje)
+const feeLabel = (d) => (d.feeType === 'percent' ? `+${+d.feeValue}%` : 'Recargo');
 
 export default function Manage({ token }) {
   const [d, setD] = useState(null);
@@ -104,7 +105,6 @@ export default function Manage({ token }) {
             <div className="t-line" key={i}>
               <span className="t-emo">{svcEmoji(x.service)}</span>
               <span className="t-name">{x.service}{items.length > 1 && <small>{x.guest_name || 'Tú'} · {hmx(x.starts_at)}</small>}</span>
-              <span>{priceLabel(x.price, x.price_from)}</span>
             </div>
           ))}
           {(a.early || a.early_fee > 0) && (
@@ -118,6 +118,23 @@ export default function Manage({ token }) {
         <div className="t-total"><span>Precio final</span><span>Lo confirma Elena en el salón</span></div>
       </div>
       {msg && <p className="error">{msg}</p>}
+
+      {mode === 'view' && a.proposal && (
+        <div className="proposal">
+          <b>🗓 El salón te propone otra hora</b>
+          <div className="pp-when">{fmt(a.proposal)}</div>
+          <div className="actions">
+            <button className="cta" disabled={busy} onClick={() => act({ action: 'accept' })}>✓ Aceptar esta hora</button>
+            <button className="ghost" onClick={() => setMode('change')}>Elegir otra</button>
+          </div>
+        </div>
+      )}
+      {mode === 'view' && a.change && (
+        <div className="change-note">
+          <b>⏳ Pediste cambiar tu cita a {fmt(a.change)}</b>
+          <p className="note" style={{ margin: '4px 0 0' }}>El salón debe confirmarlo; mientras tanto tu cita de arriba sigue en pie.</p>
+        </div>
+      )}
 
       {mode === 'view' && (
         <>
@@ -179,7 +196,7 @@ export default function Manage({ token }) {
           <div className="grid">
             {slots?.map((s) => (
               <button key={s.starts_at} className={'chip' + (s.early ? ' prio-chip' : '') + (slot?.starts_at === s.starts_at ? ' on' : '')} onClick={() => setSlot(s)}>
-                {s.time}{s.early && <small>{feeLabel(d, s.fee)}</small>}
+                {s.time}{s.early && <small>{feeLabel(d)}</small>}
               </button>
             ))}
           </div>

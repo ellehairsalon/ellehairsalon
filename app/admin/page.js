@@ -18,7 +18,7 @@ export default async function Admin({ searchParams }) {
 
   const [{ data }, { data: bdays }, { data: cfg }] = await Promise.all([
     db.from('appointments')
-      .select('id,client_id,starts_at,ends_at,status,price,early_fee,notes,client_note,manage_token,group_id,guest_name,checked_in_at,started_at,services(name,service_categories(name)),stylists(name),clients(full_name,phone,internal_notes)')
+      .select('id,client_id,starts_at,ends_at,status,price,early_fee,notes,client_note,manage_token,group_id,guest_name,checked_in_at,started_at,change_starts_at,services(name,service_categories(name)),stylists(name),clients(full_name,phone,internal_notes)')
       .gte('starts_at', `${date}T00:00:00${TZ}`).lte('starts_at', `${date}T23:59:59${TZ}`)
       .neq('status', 'cancelled').order('starts_at'),
     db.from('clients').select('id,full_name').eq('birthday_month', m).eq('birthday_day', d),
@@ -45,7 +45,7 @@ export default async function Admin({ searchParams }) {
       <p className="sub-note">{(data || []).filter((x) => x.status !== 'pending').length} {(data || []).filter((x) => x.status !== 'pending').length === 1 ? 'cita' : 'citas'}{(data || []).some((x) => x.status === 'pending') && ` · ${(data || []).filter((x) => x.status === 'pending').length} por confirmar`}</p>
       {bdays?.length > 0 && <p className="bday">🎂 Cumpleaños: {bdays.map((b) => b.full_name).join(', ')}</p>}
       <DayView appts={appts} isToday={date === today()} policyHours={hours} bonus={cfg?.early_bonus} />
-      <NewAppt />
+      <NewAppt policyHours={hours} bonus={cfg?.early_bonus} />
     </main>
   );
 }

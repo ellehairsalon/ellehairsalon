@@ -55,11 +55,15 @@ export async function POST(req) {
   if (!slot) return bad('Ese horario ya no está libre.', 409);
   const client = await findClient(p, n);
   const ends_at = new Date(+new Date(starts_at) + svc.duration_min * 60000).toISOString();
-  const { error } = await db.from('appointments').insert({
+  const { data: made, error } = await db.from('appointments').insert({
     client_id: client.id, stylist_id: slot.stylist_id, service_id, starts_at, ends_at,
     price: svc.price, early_fee: slot.fee, source: walk_in ? 'walk_in' : 'manual',
     checked_in_at: walk_in ? new Date().toISOString() : null,
-  });
+  }).select('manage_token').single();
   if (error) return bad(ACTIVE, 409);
-  return Response.json({ ok: true });
+  // Datos para que Elena pueda enviar la confirmación por WhatsApp con un toque
+  return Response.json({ ok: true, appt: {
+    manage_token: made?.manage_token, starts_at, early: !!slot.early, early_fee: slot.fee, service: svc.name,
+    client_name: n, phone: p,
+  } });
 }

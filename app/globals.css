@@ -506,3 +506,24 @@ h1 em, h2 em { font-weight:300; }
   .bar { height:.35em; margin-top:.5em; }
   .dot { width:.55em; height:.55em; }
 }
+
+/* Propuesta de horarios: 3 botones grandes */
+.sug { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:12px 0; }
+.sug-btn { position:relative; display:flex; flex-direction:column; align-items:center; gap:2px; padding:14px 6px; background:var(--card); border:1px solid var(--line); border-radius:20px; font:inherit; color:var(--ink); cursor:pointer; transition:transform .16s, border-color .2s, background-color .2s; }
+.sug-btn small { font-size:.75rem; color:var(--muted); }
+.sug-btn b { font-size:1.25rem; font-family:'Newsreader',Georgia,serif; font-weight:400; font-variant-numeric:tabular-nums; }
+.sug-btn i { position:absolute; top:6px; right:8px; font-style:normal; font-size:.75rem; }
+.sug-btn.early { background:linear-gradient(135deg,#fff1d2,#ffe0a1); border-color:var(--amber-line); }
+.sug-btn:active { transform:scale(.96); }
+.sug-btn:hover:not(:disabled) { border-color:var(--berry); }
+.req-change.wait { background:var(--card); }
+.proposal { margin:14px 0; padding:16px 18px; border-radius:24px; background:linear-gradient(135deg,#fff1d2,#ffe0a1); border:1px solid var(--amber-line); }
+.proposal b { display:block; font-size:1rem; }
+.proposal .pp-when { margin:6px 0 4px; font-family:'Newsreader',Georgia,serif; font-size:1.5rem; }
+.change-note { margin:14px 0; padding:14px 18px; border-radius:20px; background:var(--card); border:1px solid var(--line); }
+.svc-cat { font-family:'Newsreader',Georgia,serif; font-weight:400; font-size:1.5rem; color:var(--ink); margin:6px 0 4px; }
+.svc-view .lnk { margin-top:4px; }
+.req-change { display:flex; flex-direction:column; gap:2px; }
+.req-actions { align-items:center; flex-wrap:wrap; }
+.req-actions a.cta { width:auto; flex:1 1 auto; display:inline-flex; align-items:center; justify-content:center; text-align:center; text-decoration:none; margin-top:0; padding:13px 20px; word-break:normal; }
+.req-actions .cta.wa, .req-done .cta.wa { background:#1f9d57; color:#fff; }
