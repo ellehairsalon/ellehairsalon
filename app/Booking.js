@@ -28,6 +28,9 @@ export default function Booking({ showPrices = false, categories, review = true,
   const [step, setStep] = useState(1);
   const feeShown = (amt) => (showPrices ? `+${money(amt)}` : priority.type === 'percent' ? `+${+priority.value}%` : 'Recargo');
   const [cat, setCat] = useState(null);
+  const [fromSvc, setFromSvc] = useState(false); // true cuando se vuelve desde los servicios (cambia la dirección de la animación)
+  const openCat = (id) => { setFromSvc(false); setCat(id); if (typeof window !== 'undefined') window.scrollTo({ top: 0 }); };
+  const closeCat = () => { setFromSvc(true); setCat(null); if (typeof window !== 'undefined') window.scrollTo({ top: 0 }); };
   const [party, setParty] = useState([]); // [{ svc, guest }]: la primera persona es quien reserva
   const [adding, setAdding] = useState(false); // eligiendo el servicio de otra persona
   const [guest, setGuest] = useState('');
@@ -197,19 +200,19 @@ export default function Booking({ showPrices = false, categories, review = true,
               </label>
               <h3>¿Qué servicio se hará?</h3>
             </>
-          ) : <h2>¿Qué te gustaría <em>hacerte</em>?</h2>}
+          ) : !selCat && <h2>¿Qué te gustaría <em>hacerte</em>?</h2>}
           {!selCat && (
-            <div className="tiles">
+            <div className={`cat-list${fromSvc ? ' back' : ''}`}>
               {categories.map((c) => (
-                <button key={c.id} className="tile" onClick={() => setCat(c.id)}>
-                  {c.name}<small>{c.services.length} {c.services.length === 1 ? 'servicio' : 'servicios'}</small>
+                <button key={c.id} className="cat-row" onClick={() => openCat(c.id)}>
+                  <span>{c.name}</span><i aria-hidden="true">→</i>
                 </button>
               ))}
             </div>
           )}
           {selCat && (
             <div className="svc-view" key={selCat.id}>
-              <button className="lnk" onClick={() => setCat(null)}>‹ Todas las categorías</button>
+              <button className="svc-back" onClick={closeCat} aria-label="Volver a las categorías"><i aria-hidden="true">←</i> Categorías</button>
               <h3 className="svc-cat">{selCat.name}</h3>
               {selCat.services.map((s) => (
                 <button key={s.id} className="row" onClick={() => pickService(s)}>
@@ -237,7 +240,7 @@ export default function Booking({ showPrices = false, categories, review = true,
             ))}
             {party.length > 1 && <div className="note">Se atienden una tras otra · {dur(totalMin)} en total</div>}
             {party.length < MAX_PEOPLE && (
-              <button className="lnk" onClick={() => { setAdding(true); setCat(null); setStep(1); }}>＋ Agregar otra persona</button>
+              <button className="lnk" onClick={() => { setAdding(true); setCat(null); setFromSvc(false); setStep(1); }}>＋ Agregar otra persona</button>
             )}
           </div>
           <div className="weekbar">
