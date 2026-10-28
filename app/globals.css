@@ -554,3 +554,27 @@ h1 em, h2 em { font-weight:300; }
 @keyframes catIn { from { opacity:0; transform:translateX(18px); } to { opacity:1; transform:none; } }
 @keyframes catBack { from { opacity:0; transform:translateX(-18px); } to { opacity:1; transform:none; } }
 @media (prefers-reduced-motion: reduce) { .cat-list, .cat-row, .svc-view, .svc-view .row { animation:none; } }
+
+/* Paso 1: píldoras de categoría + tarjetas de servicio (una sola selección) */
+.pills { display:flex; gap:8px; overflow-x:auto; margin:14px -16px 14px; padding:2px 16px 6px; scrollbar-width:none; -webkit-overflow-scrolling:touch; scroll-snap-type:x proximity; }
+.pills::-webkit-scrollbar { display:none; }
+.pill { flex:0 0 auto; scroll-snap-align:start; padding:11px 20px; border-radius:40px; border:1px solid var(--line); background:transparent; color:var(--ink); font:inherit; font-size:.9375rem; font-weight:500; cursor:pointer; transition:background .2s, color .2s, border-color .2s, transform .1s; }
+.pill:active { transform:scale(.97); }
+.pill.on { background:var(--ink); border-color:var(--ink); color:var(--bg); }
+.svc-cards { display:flex; flex-direction:column; gap:10px; padding-bottom:84px; animation:fade .35s ease both; }
+.svc-card { display:flex; align-items:center; gap:14px; width:100%; padding:16px 18px; text-align:left; background:var(--card); border:1px solid transparent; border-radius:22px; color:var(--ink); font:inherit; cursor:pointer;
+  transition:background .25s, border-color .25s, transform .1s, box-shadow .25s; animation:rise .45s cubic-bezier(.2,.7,.2,1) both; }
+.svc-card:nth-child(2){animation-delay:.04s} .svc-card:nth-child(3){animation-delay:.08s} .svc-card:nth-child(4){animation-delay:.12s} .svc-card:nth-child(n+5){animation-delay:.16s}
+.svc-card:active { transform:scale(.985); }
+.svc-card .radio { flex:0 0 auto; width:28px; height:28px; border-radius:50%; border:1.5px solid var(--line); background:var(--bg); display:grid; place-items:center; font-style:normal; font-size:.875rem; font-weight:700; color:#fff; transition:background .25s, border-color .25s; }
+.svc-main { flex:1; display:flex; flex-direction:column; gap:3px; min-width:0; }
+.svc-main b { font-weight:500; font-size:1.0625rem; letter-spacing:-.005em; }
+.svc-main small { font-size:.875rem; color:var(--muted); }
+.svc-price { display:flex; flex-direction:column; align-items:flex-end; font-weight:600; font-size:1.0625rem; font-variant-numeric:tabular-nums; }
+.svc-price em { font-style:normal; font-weight:400; font-size:.75rem; color:var(--muted); }
+.svc-card.on { background:linear-gradient(135deg,#f8e6dc,#f3d9cb); border-color:var(--berry); box-shadow:0 6px 20px rgba(176,90,54,.14); }
+.svc-card.on .radio { background:var(--berry); border-color:var(--berry); }
+.svc-cta { position:sticky; bottom:14px; margin-top:-70px; padding-top:20px; background:linear-gradient(to top,var(--bg) 55%,transparent); z-index:5; }
+.svc-cta .cta { width:100%; margin:0; padding:17px 24px; font-size:1.0625rem; box-shadow:0 10px 28px rgba(42,43,47,.18); transition:opacity .25s, transform .1s; }
+.svc-cta .cta:disabled { opacity:.38; box-shadow:none; }
+@media (prefers-reduced-motion: reduce) { .svc-cards, .svc-card { animation:none; } }

@@ -27,10 +27,8 @@ const MAX_PEOPLE = 5;
 export default function Booking({ showPrices = false, categories, review = true, leadHours = 10, policyHours = 10, priority = { type: 'fixed', value: 5, bonus: DEFAULT_BONUS } }) {
   const [step, setStep] = useState(1);
   const feeShown = (amt) => (showPrices ? `+${money(amt)}` : priority.type === 'percent' ? `+${+priority.value}%` : 'Recargo');
-  const [cat, setCat] = useState(null);
-  const [fromSvc, setFromSvc] = useState(false); // true cuando se vuelve desde los servicios (cambia la dirección de la animación)
-  const openCat = (id) => { setFromSvc(false); setCat(id); if (typeof window !== 'undefined') window.scrollTo({ top: 0 }); };
-  const closeCat = () => { setFromSvc(true); setCat(null); if (typeof window !== 'undefined') window.scrollTo({ top: 0 }); };
+  const [cat, setCat] = useState('all');
+  const [pick, setPick] = useState(null); // servicio elegido en el paso 1 (uno solo)
   const [party, setParty] = useState([]); // [{ svc, guest }]: la primera persona es quien reserva
   const [adding, setAdding] = useState(false); // eligiendo el servicio de otra persona
   const [guest, setGuest] = useState('');
@@ -180,7 +178,7 @@ export default function Booking({ showPrices = false, categories, review = true,
   const week0Start = addDays(todayStr(), week * 7);
   const dayData = days?.find((d) => d.date === date);
   const noneAtAll = days && week === 1 && !days.some((d) => d.slots.length);
-  const selCat = categories.find((c) => c.id === cat);
+  const shown = cat === 'all' ? categories.flatMap((c) => c.services) : (categories.find((c) => c.id === cat)?.services || []);
   const deadlinePassed = slot && +new Date(slot.starts_at) - policyHours * 3600000 < Date.now();
 
   return (
@@ -200,31 +198,23 @@ export default function Booking({ showPrices = false, categories, review = true,
               </label>
               <h3>¿Qué servicio se hará?</h3>
             </>
-          ) : !selCat && <h2>¿Qué te gustaría <em>hacerte</em>?</h2>}
-          {!selCat && (
-            <div className={`cat-list${fromSvc ? ' back' : ''}`}>
-              {categories.map((c) => (
-                <button key={c.id} className="cat-row" onClick={() => openCat(c.id)}>
-                  <span>{c.name}</span><i aria-hidden="true">→</i>
-                </button>
-              ))}
-            </div>
-          )}
-          {selCat && (
-            <div className="svc-view" key={selCat.id}>
-              <button className="svc-back" onClick={closeCat} aria-label="Volver a las categorías"><i aria-hidden="true">←</i> Categorías</button>
-              <h3 className="svc-cat">{selCat.name}</h3>
-              {selCat.services.map((s) => (
-                <button key={s.id} className="row" onClick={() => pickService(s)}>
-                  <span><span className="semo">{svcEmoji(s.name, selCat.name)}</span>{s.name}</span><span className="rmeta">
-                    {showPrices && priceLabel(s.price, s.price_from) && <b className="rprice">{s.price_from && <em>desde </em>}{money(s.price)}</b>}
-                    <small className="rdur">◷ {dur(s.duration_min)}</small>
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
+          ) : <h2>¿Qué te gustaría <em>hacerte</em>?</h2>}
+          <div className="pills" role="tablist" aria-label="Categorías">
+            {[{ id: 'all', name: 'Todas' }, ...categories].map((c) => (
+              <button key={c.id} role="tab" aria-selected={cat === c.id} className={`pill${cat === c.id ? ' on' : ''}`} onClick={() => { setCat(c.id); const list = c.id === 'all' ? categories.flatMap((x) => x.services) : c.services; if (pick && !list.some((x) => x.id === pick.id)) setPick(null); }}>{c.name}</button>
+            ))}
+          </div>
+          <div className="svc-cards" key={cat}>
+            {shown.map((s) => (
+              <button key={s.id} className={`svc-card${pick?.id === s.id ? ' on' : ''}`} role="radio" aria-checked={pick?.id === s.id} onClick={() => { setPick(s); setError(''); }}>
+                <i className="radio" aria-hidden="true">{pick?.id === s.id ? '✓' : ''}</i>
+                <span className="svc-main"><b>{s.name}</b><small>{dur(s.duration_min)}</small></span>
+                {showPrices && priceLabel(s.price, s.price_from) && <span className="svc-price">{s.price_from && <em>desde</em>}{money(s.price)}</span>}
+              </button>
+            ))}
+          </div>
           {error && <p className="error">{error}</p>}
+          <div className="svc-cta"><button className="cta" disabled={!pick} onClick={() => pick && pickService(pick)}>Elegir horario</button></div>
         </section>
       )}
 
@@ -240,7 +230,7 @@ export default function Booking({ showPrices = false, categories, review = true,
             ))}
             {party.length > 1 && <div className="note">Se atienden una tras otra · {dur(totalMin)} en total</div>}
             {party.length < MAX_PEOPLE && (
-              <button className="lnk" onClick={() => { setAdding(true); setCat(null); setFromSvc(false); setStep(1); }}>＋ Agregar otra persona</button>
+              <button className="lnk" onClick={() => { setAdding(true); setCat('all'); setPick(null); setStep(1); }}>＋ Agregar otra persona</button>
             )}
           </div>
           <div className="weekbar">
