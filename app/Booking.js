@@ -178,6 +178,10 @@ export default function Booking({ showPrices = false, categories, review = true,
   const week0Start = addDays(todayStr(), week * 7);
   const dayData = days?.find((d) => d.date === date);
   const noneAtAll = days && week === 1 && !days.some((d) => d.slots.length);
+  useEffect(() => {
+    document.body.dataset.step = done ? 'done' : String(step);
+    return () => { delete document.body.dataset.step; };
+  }, [step, done]);
   const shown = cat === 'all' ? categories.flatMap((c) => c.services) : (categories.find((c) => c.id === cat)?.services || []);
   const deadlinePassed = slot && +new Date(slot.starts_at) - policyHours * 3600000 < Date.now();
 
@@ -207,9 +211,12 @@ export default function Booking({ showPrices = false, categories, review = true,
           <div className="svc-cards" key={cat}>
             {shown.map((s) => (
               <button key={s.id} className={`svc-card${pick?.id === s.id ? ' on' : ''}`} role="radio" aria-checked={pick?.id === s.id} onClick={() => { setPick(s); setError(''); }}>
+                <span className="svc-emo" aria-hidden="true">{svcEmoji(s.name, categories.find((c) => c.services.some((y) => y.id === s.id))?.name)}</span>
+                <span className="svc-main">
+                  <b>{s.name}</b>
+                  <small>{dur(s.duration_min)}{showPrices && priceLabel(s.price, s.price_from) ? ` · ${s.price_from ? 'desde ' : ''}${money(s.price)}` : ''}</small>
+                </span>
                 <i className="radio" aria-hidden="true">{pick?.id === s.id ? '✓' : ''}</i>
-                <span className="svc-main"><b>{s.name}</b><small>{dur(s.duration_min)}</small></span>
-                {showPrices && priceLabel(s.price, s.price_from) && <span className="svc-price">{s.price_from && <em>desde</em>}{money(s.price)}</span>}
               </button>
             ))}
           </div>
@@ -285,6 +292,7 @@ export default function Booking({ showPrices = false, categories, review = true,
       {step === 3 && slot && (
         <section>
           <h2>Tus <em>datos</em></h2>
+          <p className="recap">{party.map((x) => x.svc.name).join(' + ')} · {cap1(longDay(date))}, {slot.time}</p>
           <label>Tu nombre<input value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" /></label>
           <label>WhatsApp<input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" placeholder="09XXXXXXXX" autoComplete="tel" /></label>
           <button className="cta" disabled={name.trim().length < 2 || phone.replace(/\D/g, '').length < 9} onClick={() => setStep(4)}>Continuar</button>

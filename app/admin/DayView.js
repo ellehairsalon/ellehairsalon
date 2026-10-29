@@ -124,6 +124,15 @@ export default function DayView({ appts, isToday, policyHours = 10, bonus }) {
               {sel.client_note && <div className="m-note"><b>📝 Nota del cliente</b>{sel.client_note}</div>}
               {sel.clients.internal_notes && <div className="m-note"><b>Nota interna</b>{sel.clients.internal_notes}</div>}
 
+              {st === 'pending' && <a className="btn primary full" href="/admin/pendientes">Responder solicitud</a>}
+              {st === 'confirmed' && (
+                <div className="m-row main">
+                  {!sel.started_at && !sel.checked_in_at && <button className="btn tint" disabled={busy} onClick={() => quick(sel, 'checkin')}>Llegó</button>}
+                  {!sel.started_at && <button className="btn tint" disabled={busy} onClick={() => quick(sel, 'start')}>Empezar</button>}
+                  <button className="btn primary" disabled={busy} onClick={() => act(sel, 'complete')}>✓ Terminó</button>
+                </div>
+              )}
+
               <div className="m-grid">
                 <a className="btn wa wide2" href={wa}>💬 Escribir por WhatsApp</a>
                 <a className="btn soft" href={`${wa}?text=${encodeURIComponent(
@@ -137,18 +146,10 @@ export default function DayView({ appts, isToday, policyHours = 10, bonus }) {
               <textarea rows={2} placeholder="Nota de esta visita (ej. fórmula del tinte)" value={note} onChange={(e) => setNote(e.target.value)} />
               <button className="btn soft sm" disabled={busy} onClick={() => call(sel.id, 'note', { notes: note }).then((j) => j && setSel(null))}>Guardar nota</button>
 
-              {st === 'pending' && <a className="btn primary full" href="/admin/pendientes">Responder solicitud</a>}
               {st === 'confirmed' && (
-                <div className="m-flow">
-                  <div className="m-row">
-                    {!sel.started_at && !sel.checked_in_at && <button className="btn tint" disabled={busy} onClick={() => quick(sel, 'checkin')}>Llegó</button>}
-                    {!sel.started_at && <button className="btn tint" disabled={busy} onClick={() => quick(sel, 'start')}>Empezar</button>}
-                    <button className="btn primary" disabled={busy} onClick={() => act(sel, 'complete')}>✓ Terminó</button>
-                  </div>
-                  <div className="m-row end">
-                    <button className="btn danger" disabled={busy} onClick={() => act(sel, 'no_show')}>No vino</button>
-                    <button className="btn danger" disabled={busy} onClick={() => act(sel, 'cancel')}>Cancelar cita</button>
-                  </div>
+                <div className="m-row end">
+                  <button className="btn danger" disabled={busy} onClick={() => act(sel, 'no_show')}>No vino</button>
+                  <button className="btn danger" disabled={busy} onClick={() => act(sel, 'cancel')}>Cancelar cita</button>
                 </div>
               )}
             </div>
