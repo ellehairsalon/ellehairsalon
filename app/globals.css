@@ -733,3 +733,7 @@ body[data-step="2"] main, body[data-step="3"] main, body[data-step="4"] main { p
 .inv-step button { width:40px; height:40px; }
 .inv-step span { min-width:44px; }
 .inv-tag { white-space:nowrap; }
+
+.req-skip { display:block; margin:10px auto 0; font-size:.875rem; font-weight:500; color:var(--muted); }
+.req-done p b { color:var(--amber); }
+.req.confirmed, .req.changed { border-color:#bfe3cc; }

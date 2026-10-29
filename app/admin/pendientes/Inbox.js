@@ -20,7 +20,6 @@ const dur = (m) => (m >= 60 ? `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min
 
 export default function Inbox({ items, hours = 10, bonus, feeType = 'fixed', feeValue = 0 }) {
   const router = useRouter();
-  const [done, setDone] = useState({}); // id -> { state: 'confirmed' | 'rejected', item }: ya respondida, falta enviar el WhatsApp
   const [ask, setAsk] = useState(null); // id de la solicitud que se está por rechazar
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -49,11 +48,13 @@ export default function Inbox({ items, hours = 10, bonus, feeType = 'fixed', fee
     setBusy(false);
     if (!r.ok) { setError(j.error || 'No se pudo completar.'); router.refresh(); return; }
     setAsk(null); setProp(null);
-    const state = { confirm: 'confirmed', reject: 'rejected', propose: 'proposed', confirm_change: 'changed', reject_change: 'kept' }[action];
-    const item = action === 'propose' ? moved(a, extra.starts_at) : action === 'confirm_change' ? moved(a, a.new_starts_at) : a;
-    if (action === 'withdraw') { router.refresh(); return; }
-    setDone((d) => ({ ...d, [a.id]: { state, item } }));
-    router.refresh(); // actualiza el contador de la barra
+    router.refresh(); // la solicitud respondida vuelve como "falta avisar por WhatsApp" y el contador de la barra se actualiza
+  }
+
+  // Elena ya avisó al cliente: recién ahora la solicitud sale de Pendientes (se guarda en el servidor).
+  async function markSent(a) {
+    await fetch('/api/admin/appt', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: a.id, action: 'notified' }) }).catch(() => {});
+    router.refresh();
   }
 
   // Los 3 horarios libres más cercanos a lo que pidió el cliente: un toque y listo.
@@ -72,18 +73,17 @@ export default function Inbox({ items, hours = 10, bonus, feeType = 'fixed', fee
   }
 
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
-  // Las ya respondidas se quedan en pantalla hasta que Elena toque "Enviar", para que no se olvide el mensaje.
-  const shown = items.concat(Object.values(done).map((d) => d.item).filter((it) => !items.some((x) => x.id === it.id)));
-  const forget = (id) => setTimeout(() => setDone((d) => { const n = { ...d }; delete n[id]; return n; }), 600);
+  const shown = items; // las ya respondidas siguen aquí (kind 'notify') hasta enviar el WhatsApp
 
   return (
     <>
       {error && <p className="error">{error}</p>}
       {shown.length === 0 && (
-        <div className="empty"><div className="empty-ico">🎉</div><b>Todo al día</b><span>No hay solicitudes por confirmar.</span></div>
+        <div className="empty"><div className="empty-ico">🎉</div><b>Todo al día</b><span>No hay solicitudes por responder ni avisos por enviar.</span></div>
       )}
       {shown.map((a) => {
-        const st = done[a.id]?.state;
+        const st = a.kind === 'notify' ? { confirm: 'confirmed', reject: 'rejected', change_ok: 'changed', change_no: 'kept' }[a.notify] : null;
+        const alt = a.kind === 'proposal' || a.kind === 'change';
         const people = a.people || [a];
         return (
           <div className={'req' + (st ? ' ' + st : '') + (a.early || a.early_fee > 0 ? ' early' : '')} key={a.id}>
@@ -109,8 +109,8 @@ export default function Inbox({ items, hours = 10, bonus, feeType = 'fixed', fee
               </div>
             )}
             <div className="req-when">
-              <span className="req-day">{dayLabel(a.kind !== 'new' ? a.new_starts_at : a.starts_at)}</span>
-              <span className="req-hour">{hmx(a.kind !== 'new' ? a.new_starts_at : a.starts_at)}</span>
+              <span className="req-day">{dayLabel(alt ? a.new_starts_at : a.starts_at)}</span>
+              <span className="req-hour">{hmx(alt ? a.new_starts_at : a.starts_at)}</span>
               {(a.early || a.early_fee > 0) && <span className="chip-prio">🌅 Prioritario {feeType === 'percent' ? `+${+feeValue}%` : a.early_fee > 0 ? `+${money(a.early_fee)}` : ''}</span>}
             </div>
 
@@ -120,7 +120,7 @@ export default function Inbox({ items, hours = 10, bonus, feeType = 'fixed', fee
                   <span className="emo">{svcEmoji(x.services.name, x.services.service_categories?.name)}</span>
                   <div className="who">
                     <b>{x.services.name}</b>
-                    <small>{people.length > 1 ? `${x.guest_name || a.clients.full_name.split(' ')[0]} · ${hmx(a.kind !== 'new' && x.change_starts_at ? x.change_starts_at : x.starts_at)} · ` : ''}{dur(x.services.duration_min)}</small>
+                    <small>{people.length > 1 ? `${x.guest_name || a.clients.full_name.split(' ')[0]} · ${hmx(alt && x.change_starts_at ? x.change_starts_at : x.starts_at)} · ` : ''}{dur(x.services.duration_min)}</small>
                   </div>
                 </div>
               ))}
@@ -130,7 +130,7 @@ export default function Inbox({ items, hours = 10, bonus, feeType = 'fixed', fee
 
             {!st && a.kind === 'proposal' && (
               <div className="req-actions">
-                <a target="_blank" rel="noopener noreferrer" className="cta wa" href={waLink(a.clients.phone, proposeText(moved(a, a.new_starts_at), origin, a.people.length > 1 ? moved(a, a.new_starts_at).people : null))}>Reenviar propuesta por WhatsApp</a>
+                <a target="_blank" rel="noopener noreferrer" className="cta wa" href={waLink(a.clients.phone, proposeText(moved(a, a.new_starts_at), origin, a.people.length > 1 ? moved(a, a.new_starts_at).people : null))}>Enviar propuesta por WhatsApp</a>
                 <button className="ghost" disabled={busy} onClick={() => answer(a, 'withdraw')}>Retirar propuesta</button>
               </div>
             )}
@@ -197,34 +197,35 @@ export default function Inbox({ items, hours = 10, bonus, feeType = 'fixed', fee
             )}
             {st === 'confirmed' && (
               <div className="req-done">
-                <p>✓ Confirmada. Falta avisarle al cliente:</p>
-                <a target="_blank" rel="noopener noreferrer" className="cta wa" href={waLink(a.clients.phone, confirmText(a, origin, hours, a.people, bonus))} onClick={() => forget(a.id)}>Enviar confirmación por WhatsApp</a>
+                <p>✓ Cita confirmada. <b>El cliente aún no lo sabe</b>: envíale la confirmación.</p>
+                <a target="_blank" rel="noopener noreferrer" className="cta wa" href={waLink(a.clients.phone, confirmText(a, origin, hours, a.people, bonus))} onClick={() => markSent(a)}>Enviar confirmación por WhatsApp</a>
               </div>
             )}
             {st === 'proposed' && (
               <div className="req-done">
                 <p>✓ Propuesta lista. Falta enviársela al cliente por WhatsApp:</p>
-                <a target="_blank" rel="noopener noreferrer" className="cta wa" href={waLink(a.clients.phone, proposeText(a, origin, a.people.length > 1 ? a.people : null))} onClick={() => forget(a.id)}>Enviar propuesta por WhatsApp</a>
+                <a target="_blank" rel="noopener noreferrer" className="cta wa" href={waLink(a.clients.phone, proposeText(a, origin, a.people.length > 1 ? a.people : null))} onClick={() => markSent(a)}>Enviar propuesta por WhatsApp</a>
               </div>
             )}
             {st === 'changed' && (
               <div className="req-done">
-                <p>✓ Cambio confirmado. Falta avisarle al cliente:</p>
-                <a target="_blank" rel="noopener noreferrer" className="cta wa" href={waLink(a.clients.phone, changeOkText(a, origin, hours, a.people.length > 1 ? a.people : null))} onClick={() => forget(a.id)}>Enviar confirmación por WhatsApp</a>
+                <p>✓ Cambio confirmado. <b>El cliente aún no lo sabe</b>: envíale la confirmación.</p>
+                <a target="_blank" rel="noopener noreferrer" className="cta wa" href={waLink(a.clients.phone, changeOkText(a, origin, hours, a.people.length > 1 ? a.people : null))} onClick={() => markSent(a)}>Enviar confirmación por WhatsApp</a>
               </div>
             )}
             {st === 'kept' && (
               <div className="req-done">
-                <p>Se mantiene la cita original. Falta avisarle al cliente:</p>
-                <a target="_blank" rel="noopener noreferrer" className="cta wa" href={waLink(a.clients.phone, changeNoText(a, origin))} onClick={() => forget(a.id)}>Avisar por WhatsApp</a>
+                <p>Se mantiene la cita original. <b>El cliente aún no lo sabe</b>: avísale.</p>
+                <a target="_blank" rel="noopener noreferrer" className="cta wa" href={waLink(a.clients.phone, changeNoText(a, origin))} onClick={() => markSent(a)}>Avisar por WhatsApp</a>
               </div>
             )}
             {st === 'rejected' && (
               <div className="req-done">
-                <p>Solicitud rechazada. Falta avisarle al cliente:</p>
-                <a target="_blank" rel="noopener noreferrer" className="cta wa" href={waLink(a.clients.phone, rejectText(a, origin, a.people))} onClick={() => forget(a.id)}>Avisar por WhatsApp</a>
+                <p>Solicitud rechazada. <b>El cliente aún no lo sabe</b>: avísale.</p>
+                <a target="_blank" rel="noopener noreferrer" className="cta wa" href={waLink(a.clients.phone, rejectText(a, origin, a.people))} onClick={() => markSent(a)}>Avisar por WhatsApp</a>
               </div>
             )}
+            {st && <button className="lnk req-skip" onClick={() => markSent(a)}>Ya le avisé de otra forma</button>}
           </div>
         );
       })}

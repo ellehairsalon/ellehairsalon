@@ -1,5 +1,6 @@
 import { db, getGroupSlots, moveGroup, earlyFeeFor } from '@/lib/slots';
 import { isAdmin } from '@/lib/admin';
+import { notifySupported } from '@/lib/notify';
 
 const bad = (error, status) => Response.json({ error }, { status });
 const BUSY = 'No se pudo completar. ¿Ese horario ya está ocupado?';
@@ -58,8 +59,9 @@ export async function POST(req) {
   if (action === 'confirm_change' || action === 'reject_change') {
     const rows = (await groupOf(['confirmed'])).filter((r) => r.change_starts_at);
     if (!rows.length) return bad('Este cambio ya fue respondido o el cliente lo canceló.', 409);
+    const NK = (await notifySupported()) ? (k) => ({ notify_kind: k }) : () => ({});
     if (action === 'reject_change') {
-      await db.from('appointments').update(CLEAR).in('id', rows.map((r) => r.id));
+      await db.from('appointments').update({ ...CLEAR, ...NK('change_no') }).in('id', rows.map((r) => r.id));
       return Response.json({ ok: true });
     }
     rows.sort((x, y) => +new Date(x.change_starts_at) - +new Date(y.change_starts_at));
@@ -68,7 +70,7 @@ export async function POST(req) {
     const { slots } = await getGroupSlots(date, rows.map((r) => r.service_id), rows.map((r) => r.id), 0);
     const slot = slots.find((s) => +new Date(s.starts_at) === +new Date(first.change_starts_at));
     if (!slot) return bad('Ese horario ya no está libre. Rechaza el cambio o propón otra hora.', 409);
-    const moved = await moveGroup(rows, first.change_starts_at, slot.stylist_id, CLEAR);
+    const moved = await moveGroup(rows, first.change_starts_at, slot.stylist_id, { ...CLEAR, ...NK('change_ok') });
     return moved.ok ? Response.json({ ok: true }) : bad('Ese horario acaba de ocuparse. Propón otra hora.', 409);
   }
 
@@ -100,11 +102,23 @@ export async function POST(req) {
     return Response.json({ ok: true });
   }
 
+  // Elena ya avisó al cliente por WhatsApp (o por otro medio): la solicitud sale de Pendientes.
+  if (action === 'notified') {
+    if (await notifySupported()) {
+      const { data: me } = await db.from('appointments').select('group_id').eq('id', id).maybeSingle();
+      let q = db.from('appointments').update({ notify_kind: null }).not('notify_kind', 'is', null);
+      q = me?.group_id ? q.eq('group_id', me.group_id) : q.eq('id', id);
+      await q;
+    }
+    return Response.json({ ok: true });
+  }
+
   // Solicitudes de clientas: Elena las confirma o las rechaza.
   if (action === 'confirm' || action === 'reject') {
+    const nk = (await notifySupported()) ? { notify_kind: action } : {};
     const patch = action === 'confirm'
-      ? { status: 'confirmed' }
-      : { status: 'cancelled', cancelled_at: new Date().toISOString() };
+      ? { status: 'confirmed', ...nk }
+      : { status: 'cancelled', cancelled_at: new Date().toISOString(), ...nk };
     // Si la reserva fue para varias personas, se confirma o rechaza completa.
     const { data: me } = await db.from('appointments').select('group_id').eq('id', id).maybeSingle();
     let q0 = db.from('appointments').update(patch).eq('status', 'pending');
