@@ -134,12 +134,12 @@ export default function DayView({ appts, isToday, policyHours = 10, bonus }) {
               )}
 
               <div className="m-grid">
-                <a className="btn wa wide2" href={wa}>💬 Escribir por WhatsApp</a>
-                <a className="btn soft" href={`${wa}?text=${encodeURIComponent(
+                <a target="_blank" rel="noopener noreferrer" className="btn wa wide2" href={wa}>💬 Escribir por WhatsApp</a>
+                <a target="_blank" rel="noopener noreferrer" className="btn soft" href={`${wa}?text=${encodeURIComponent(
                   `Hola ${first(sel.clients.full_name)}, te recordamos tu cita de ${sel.services.name} el ${longDate(sel.starts_at)} a las ${hm(sel.starts_at)}. ¡Te esperamos en Elle Hair Salon!`)}`}>Recordar cita</a>
                 <a className="btn soft" href={`/admin/clientas/${sel.client_id}`}>Ficha</a>
                 {st === 'confirmed' && (
-                  <a className="btn soft wide2" href={waLink(sel.clients.phone, confirmText(sel, window.location.origin, policyHours, sel.group_id ? appts.filter((x) => x.group_id === sel.group_id) : null, bonus))}>Reenviar confirmación</a>
+                  <a target="_blank" rel="noopener noreferrer" className="btn soft wide2" href={waLink(sel.clients.phone, confirmText(sel, window.location.origin, policyHours, sel.group_id ? appts.filter((x) => x.group_id === sel.group_id) : null, bonus))}>Reenviar confirmación</a>
                 )}
               </div>
 

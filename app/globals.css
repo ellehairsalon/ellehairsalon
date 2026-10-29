@@ -661,3 +661,21 @@ body[data-step="2"] main, body[data-step="3"] main, body[data-step="4"] main { p
 .modal textarea + .btn.sm { margin-bottom:2px; }
 .m-row.main .btn { white-space:nowrap; padding:12px 8px; min-height:50px; }
 .m-alert, .m-note, .m-chip { word-break:normal; overflow-wrap:break-word; hyphens:none; }
+
+/* ===== Nueva cita: ventana centrada (ya no es una hoja pegada abajo) ===== */
+.scrim.center { align-items:center; padding:16px; background:rgba(42,43,47,.45); backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px); overscroll-behavior:contain; }
+.scrim.center .sheet.na { width:100%; max-width:480px; height:min(720px, calc(100dvh - 32px)); min-height:0; max-height:calc(100dvh - 32px); overflow-y:auto; padding:18px 18px 16px;
+  border-radius:28px; box-shadow:0 24px 64px -12px rgba(42,43,47,.4); animation:modalIn .32s cubic-bezier(.2,.9,.3,1) both; }
+.scrim.center .sheet.na::before { display:none; }
+.na-pills { margin:0 -18px 12px; padding:2px 18px 6px; }
+.na-pills .pill { padding:9px 16px; font-size:.9375rem; }
+.na-svcs { display:flex; flex-direction:column; gap:8px; }
+.na-svcrow { display:flex; align-items:center; gap:14px; width:100%; padding:12px 14px; background:var(--card); border:1px solid transparent; border-radius:20px; color:var(--ink); font:inherit; text-align:left; cursor:pointer; transition:transform .1s, border-color .2s; animation:rise .4s cubic-bezier(.2,.7,.2,1) both; }
+.na-svcrow:active { transform:scale(.98); border-color:var(--berry); }
+.na-svcrow:hover { border-color:var(--berry); }
+.na-svcrow i { margin-left:auto; font-style:normal; font-size:1.5rem; color:var(--berry); opacity:.7; }
+.na-ok-actions { display:flex; flex-direction:column; gap:10px; width:100%; margin-top:18px; }
+.na-ok { padding:36px 0 12px; }
+@media (min-width:700px) { .scrim.center .sheet.na { height:min(680px, calc(100dvh - 48px)); } }
+.pills { scroll-padding-inline:16px; }
+.na-pills { scroll-padding-inline:18px; }

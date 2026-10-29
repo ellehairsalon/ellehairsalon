@@ -23,7 +23,7 @@ export default function NewAppt({ policyHours = 10, bonus }) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(1);
   const [svcs, setSvcs] = useState([]);
-  const [cat, setCat] = useState(null);
+  const [cat, setCat] = useState('all');
   const [svc, setSvc] = useState(null);
   const [asap, setAsap] = useState(undefined); // undefined = cargando, null = sin huecos
   const [date, setDate] = useState('');
@@ -47,7 +47,7 @@ export default function NewAppt({ policyHours = 10, bonus }) {
     }
     return g;
   }, [svcs]);
-  const curCat = cats.find((c) => c.name === cat) || null; // los servicios aparecen al elegir una categoría
+  const shownSvcs = cat === 'all' ? cats.flatMap((c) => c.items.map((s) => ({ s, cn: c.name }))) : (cats.find((c) => c.name === cat)?.items || []).map((s) => ({ s, cn: cat }));
 
   useEffect(() => {
     if (open && !svcs.length)
@@ -127,7 +127,7 @@ export default function NewAppt({ policyHours = 10, bonus }) {
     <>
       <button className="fab" aria-label="Nueva cita" onClick={() => setOpen(true)}><span>＋</span><b>Nueva cita</b></button>
       {open && (
-        <div className="scrim" onClick={close}>
+        <div className="scrim center" onClick={close}>
           <div className="sheet na" onClick={(e) => e.stopPropagation()}>
             {okMsg ? (
               <div className="na-ok">
@@ -136,7 +136,7 @@ export default function NewAppt({ policyHours = 10, bonus }) {
                 <small>{name.trim()} · {svc?.name}</small>
                 {made && (
                   <div className="na-ok-actions">
-                    <a className="btn wa full" onClick={() => setTimeout(close, 400)}
+                    <a target="_blank" rel="noopener noreferrer" className="btn wa full" onClick={() => setTimeout(close, 400)}
                       href={waLink(made.phone, confirmText({ clients: { full_name: made.client_name }, services: { name: made.service }, starts_at: made.starts_at, early_fee: made.early_fee, early: made.early, manage_token: made.manage_token }, window.location.origin, policyHours, null, bonus))}>
                       💬 Enviar confirmación por WhatsApp
                     </a>
@@ -163,25 +163,21 @@ export default function NewAppt({ policyHours = 10, bonus }) {
 
             {step === 1 && (
               <>
-                <div className="na-catgrid">
-                  {cats.map((c) => (
-                    <button key={c.name} className={'na-catt' + (curCat?.name === c.name ? ' on' : '')} onClick={() => setCat(curCat?.name === c.name ? null : c.name)}>
-                      <span>{svcEmoji(c.items[0]?.name, c.name)}</span><b>{c.name}</b><small>{c.items.length}</small>
+                <div className="pills na-pills" role="tablist" aria-label="Categorías">
+                  {[{ name: 'all', label: 'Todos' }, ...cats.map((c) => ({ name: c.name, label: c.name }))].map((c) => (
+                    <button key={c.name} role="tab" aria-selected={cat === c.name} className={'pill' + (cat === c.name ? ' on' : '')} onClick={() => setCat(c.name)}>{c.label}</button>
+                  ))}
+                </div>
+                {!svcs.length && <p className="note">Cargando…</p>}
+                <div className="na-svcs">
+                  {shownSvcs.map(({ s, cn }) => (
+                    <button key={s.id} className="na-svcrow" onClick={() => { setSvc(s); setStep(2); }}>
+                      <span className="svc-emo" aria-hidden="true">{svcEmoji(s.name, cn)}</span>
+                      <span className="svc-main"><b>{s.name}</b><small>{dur(s.duration_min)}</small></span>
+                      <i aria-hidden="true">›</i>
                     </button>
                   ))}
-                  {!svcs.length && <p className="note">Cargando…</p>}
                 </div>
-                {curCat && (
-                  <div className="na-grid">
-                    {curCat.items.map((s) => (
-                      <button key={s.id} className="na-tile" onClick={() => { setSvc(s); setStep(2); }}>
-                        <span className="na-emo">{svcEmoji(s.name, curCat.name)}</span>
-                        <b>{s.name}</b>
-                        <small>◷ {dur(s.duration_min)}</small>
-                      </button>
-                    ))}
-                  </div>
-                )}
               </>
             )}
 

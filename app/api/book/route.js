@@ -41,7 +41,7 @@ export async function POST(req) {
 
   // El horario se vuelve a validar en el servidor (incluida la anticipación mínima): nunca se confía en el navegador.
   const { slots, items: svcs, svc } = await getGroupSlots(starts_at.slice(0, 10), items.map((it) => it.service_id));
-  const slot = slots.find((s) => s.starts_at === starts_at);
+  const slot = slots.find((s) => +new Date(s.starts_at) === +new Date(starts_at));
   if (!slot) return err('Ese horario ya no está disponible. Elige otro.', 409);
 
   let { data: client } = await db.from('clients').select('*').eq('phone', p).maybeSingle();

@@ -91,7 +91,7 @@ export default function Inbox({ items, hours = 10, bonus, feeType = 'fixed', fee
               <div className="avatar">{initials(a.clients.full_name)}</div>
               <div className="req-who">
                 <b>{a.clients.full_name}</b>
-                <a href={`https://wa.me/${a.clients.phone.replace(/\D/g, '')}`}>{a.clients.phone}</a>
+                <a target="_blank" rel="noopener noreferrer" href={`https://wa.me/${a.clients.phone.replace(/\D/g, '')}`}>{a.clients.phone}</a>
               </div>
               <span className="ago">{ago(a.created_at)}</span>
             </div>
@@ -130,7 +130,7 @@ export default function Inbox({ items, hours = 10, bonus, feeType = 'fixed', fee
 
             {!st && a.kind === 'proposal' && (
               <div className="req-actions">
-                <a className="cta wa" href={waLink(a.clients.phone, proposeText(moved(a, a.new_starts_at), origin, a.people.length > 1 ? moved(a, a.new_starts_at).people : null))}>Reenviar propuesta por WhatsApp</a>
+                <a target="_blank" rel="noopener noreferrer" className="cta wa" href={waLink(a.clients.phone, proposeText(moved(a, a.new_starts_at), origin, a.people.length > 1 ? moved(a, a.new_starts_at).people : null))}>Reenviar propuesta por WhatsApp</a>
                 <button className="ghost" disabled={busy} onClick={() => answer(a, 'withdraw')}>Retirar propuesta</button>
               </div>
             )}
@@ -198,31 +198,31 @@ export default function Inbox({ items, hours = 10, bonus, feeType = 'fixed', fee
             {st === 'confirmed' && (
               <div className="req-done">
                 <p>✓ Confirmada. Falta avisarle al cliente:</p>
-                <a className="cta wa" href={waLink(a.clients.phone, confirmText(a, origin, hours, a.people, bonus))} onClick={() => forget(a.id)}>Enviar confirmación por WhatsApp</a>
+                <a target="_blank" rel="noopener noreferrer" className="cta wa" href={waLink(a.clients.phone, confirmText(a, origin, hours, a.people, bonus))} onClick={() => forget(a.id)}>Enviar confirmación por WhatsApp</a>
               </div>
             )}
             {st === 'proposed' && (
               <div className="req-done">
                 <p>✓ Propuesta lista. Falta enviársela al cliente por WhatsApp:</p>
-                <a className="cta wa" href={waLink(a.clients.phone, proposeText(a, origin, a.people.length > 1 ? a.people : null))} onClick={() => forget(a.id)}>Enviar propuesta por WhatsApp</a>
+                <a target="_blank" rel="noopener noreferrer" className="cta wa" href={waLink(a.clients.phone, proposeText(a, origin, a.people.length > 1 ? a.people : null))} onClick={() => forget(a.id)}>Enviar propuesta por WhatsApp</a>
               </div>
             )}
             {st === 'changed' && (
               <div className="req-done">
                 <p>✓ Cambio confirmado. Falta avisarle al cliente:</p>
-                <a className="cta wa" href={waLink(a.clients.phone, changeOkText(a, origin, hours, a.people.length > 1 ? a.people : null))} onClick={() => forget(a.id)}>Enviar confirmación por WhatsApp</a>
+                <a target="_blank" rel="noopener noreferrer" className="cta wa" href={waLink(a.clients.phone, changeOkText(a, origin, hours, a.people.length > 1 ? a.people : null))} onClick={() => forget(a.id)}>Enviar confirmación por WhatsApp</a>
               </div>
             )}
             {st === 'kept' && (
               <div className="req-done">
                 <p>Se mantiene la cita original. Falta avisarle al cliente:</p>
-                <a className="cta wa" href={waLink(a.clients.phone, changeNoText(a, origin))} onClick={() => forget(a.id)}>Avisar por WhatsApp</a>
+                <a target="_blank" rel="noopener noreferrer" className="cta wa" href={waLink(a.clients.phone, changeNoText(a, origin))} onClick={() => forget(a.id)}>Avisar por WhatsApp</a>
               </div>
             )}
             {st === 'rejected' && (
               <div className="req-done">
                 <p>Solicitud rechazada. Falta avisarle al cliente:</p>
-                <a className="cta wa" href={waLink(a.clients.phone, rejectText(a, origin, a.people))} onClick={() => forget(a.id)}>Avisar por WhatsApp</a>
+                <a target="_blank" rel="noopener noreferrer" className="cta wa" href={waLink(a.clients.phone, rejectText(a, origin, a.people))} onClick={() => forget(a.id)}>Avisar por WhatsApp</a>
               </div>
             )}
           </div>

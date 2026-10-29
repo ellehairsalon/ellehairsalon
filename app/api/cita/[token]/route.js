@@ -93,7 +93,7 @@ export async function POST(req, { params }) {
     const first = rows[0];
     const day = new Date(+new Date(first.change_starts_at) - 5 * 3600000).toISOString().slice(0, 10);
     const { slots } = await getGroupSlots(day, live.map((x) => x.service_id), live.map((x) => x.id), 0);
-    const slot = slots.find((s) => s.starts_at === new Date(first.change_starts_at).toISOString());
+    const slot = slots.find((s) => +new Date(s.starts_at) === +new Date(first.change_starts_at));
     if (!slot) return bad('Ese horario ya no está libre. Elige otra hora y Elena te confirma.', 409);
     const moved = await moveGroup(live, first.change_starts_at, slot.stylist_id, { status: 'confirmed', change_starts_at: null, change_ends_at: null, change_stylist_id: null, change_early_fee: null, change_requested_at: null });
     if (!moved.ok) return bad('Ese horario acaba de ocuparse. Elige otra hora.', 409);
@@ -103,7 +103,7 @@ export async function POST(req, { params }) {
   if (action === 'reschedule') {
     if (a.status === 'confirmed' && hoursLeft(a) < hours) return bad(`Para cambios con menos de ${hours} horas, escríbenos por WhatsApp.`, 403);
     const { slots, items } = await getGroupSlots(String(starts_at).slice(0, 10), live.map((x) => x.service_id), live.map((x) => x.id));
-    const slot = slots.find((s) => s.starts_at === starts_at);
+    const slot = slots.find((s) => +new Date(s.starts_at) === +new Date(starts_at));
     if (!slot) return bad('Ese horario ya no está disponible. Elige otro.', 409);
 
     const { data: cfg } = await db.from('salon_settings').select('approval_mode').eq('id', 1).single();

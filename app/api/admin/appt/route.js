@@ -66,7 +66,7 @@ export async function POST(req) {
     const first = rows[0];
     const date = new Date(+new Date(first.change_starts_at) - 5 * 3600000).toISOString().slice(0, 10);
     const { slots } = await getGroupSlots(date, rows.map((r) => r.service_id), rows.map((r) => r.id), 0);
-    const slot = slots.find((s) => s.starts_at === new Date(first.change_starts_at).toISOString());
+    const slot = slots.find((s) => +new Date(s.starts_at) === +new Date(first.change_starts_at));
     if (!slot) return bad('Ese horario ya no está libre. Rechaza el cambio o propón otra hora.', 409);
     const moved = await moveGroup(rows, first.change_starts_at, slot.stylist_id, CLEAR);
     return moved.ok ? Response.json({ ok: true }) : bad('Ese horario acaba de ocuparse. Propón otra hora.', 409);
@@ -78,7 +78,7 @@ export async function POST(req) {
     if (!rows.length) return bad('Esta solicitud ya fue respondida o cancelada por el cliente.', 409);
     const day = new Date(+new Date(starts_at) - 5 * 3600000).toISOString().slice(0, 10);
     const { slots } = await getGroupSlots(day, rows.map((r) => r.service_id), rows.map((r) => r.id), 0);
-    const slot = slots.find((x) => x.starts_at === new Date(starts_at).toISOString());
+    const slot = slots.find((x) => +new Date(x.starts_at) === +new Date(starts_at));
     if (!slot) return bad('Ese horario ya no está libre. Elige otro.', 409);
     let cursor = +new Date(starts_at);
     for (const row of rows) {

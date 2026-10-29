@@ -28,7 +28,7 @@ export default async function Client({ params }) {
         <span className="avatar big">{c.full_name.trim().split(/\s+/).slice(0, 2).map((x) => x[0]?.toUpperCase()).join('')}</span>
         <div>
           <h1>{c.full_name}</h1>
-          <a className="pill-link" href={`https://wa.me/${c.phone.replace(/\D/g, '')}`}>💬 {c.phone}</a>
+          <a target="_blank" rel="noopener noreferrer" className="pill-link" href={`https://wa.me/${c.phone.replace(/\D/g, '')}`}>💬 {c.phone}</a>
         </div>
       </div>
       <div className="stats">

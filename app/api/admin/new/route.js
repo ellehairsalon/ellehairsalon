@@ -51,7 +51,7 @@ export async function POST(req) {
   }
 
   const { slots, svc } = await getSlots(String(starts_at).slice(0, 10), service_id, null, 0);
-  const slot = slots.find((s) => s.starts_at === starts_at);
+  const slot = slots.find((s) => +new Date(s.starts_at) === +new Date(starts_at));
   if (!slot) return bad('Ese horario ya no está libre.', 409);
   const client = await findClient(p, n);
   const ends_at = new Date(+new Date(starts_at) + svc.duration_min * 60000).toISOString();
