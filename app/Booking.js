@@ -43,6 +43,10 @@ export default function Booking({ showPrices = false, categories, review = true,
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(null);
+  useEffect(() => {
+    document.body.dataset.step = done ? 'done' : String(step);
+    return () => { delete document.body.dataset.step; };
+  }, [step, done]);
   const jumped = useRef(false); // salta a la semana siguiente solo una vez por reserva
 
   const partyKey = party.map((x) => x.svc.id).join(',');
@@ -178,10 +182,6 @@ export default function Booking({ showPrices = false, categories, review = true,
   const week0Start = addDays(todayStr(), week * 7);
   const dayData = days?.find((d) => d.date === date);
   const noneAtAll = days && week === 1 && !days.some((d) => d.slots.length);
-  useEffect(() => {
-    document.body.dataset.step = done ? 'done' : String(step);
-    return () => { delete document.body.dataset.step; };
-  }, [step, done]);
   const shown = cat === 'all' ? categories.flatMap((c) => c.services) : (categories.find((c) => c.id === cat)?.services || []);
   const deadlinePassed = slot && +new Date(slot.starts_at) - policyHours * 3600000 < Date.now();
 
