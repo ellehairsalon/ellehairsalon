@@ -1,10 +1,11 @@
 import { db } from '@/lib/slots';
 import { isAdmin } from '@/lib/admin';
+import { followSupported } from '@/lib/notify';
 
 export async function GET() {
   if (!(await isAdmin())) return Response.json({ error: 'No autorizado' }, { status: 401 });
   const { data } = await db.from('services')
-    .select('id,name,duration_min,price,price_from,is_active,sort_order,category_id,service_categories(name,sort_order)')
+    .select('*,service_categories(name,sort_order)')
     .order('sort_order');
   const services = (data || []).sort((a, b) =>
     (a.service_categories?.sort_order ?? 0) - (b.service_categories?.sort_order ?? 0) || a.sort_order - b.sort_order);
@@ -33,6 +34,12 @@ export async function POST(req) {
   if (duration_min !== undefined && +duration_min > 0) patch.duration_min = Math.round(+duration_min);
   if (typeof body.price_from === 'boolean') patch.price_from = body.price_from;
   if (typeof is_active === 'boolean') patch.is_active = is_active;
+  if (body.return_weeks !== undefined) { // cada cuántas semanas debe volver el cliente (vacío = no avisar)
+    if (!(await followSupported())) return Response.json({ error: 'Falta correr migration-16.sql en Supabase.' }, { status: 409 });
+    const w = body.return_weeks === '' || body.return_weeks === null ? null : Math.round(+body.return_weeks);
+    if (w !== null && !(w >= 1 && w <= 104)) return Response.json({ error: 'Escribe entre 1 y 104 semanas.' }, { status: 400 });
+    patch.return_weeks = w;
+  }
   if (!id || !Object.keys(patch).length) return Response.json({ error: 'Datos inválidos' }, { status: 400 });
   const { error } = await db.from('services').update(patch).eq('id', id);
   return error ? Response.json({ error: 'No se pudo guardar' }, { status: 500 }) : Response.json({ ok: true });

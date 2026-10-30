@@ -37,6 +37,7 @@ export default function ServicesEditor() {
   return (
     <div>
       <p className="note">Cambia un valor y toca fuera de la casilla para guardarlo. {msg}</p>
+      <p className="note">“Volver cada”: cuando un cliente termina este servicio, aparece en Seguimiento cuando le toca volver. Déjalo vacío si no necesita aviso.</p>
       {Object.entries(groups).map(([cid, { name, items }]) => (
         <details className="fold" key={cid}>
           <summary>{name} ({items.length})</summary>
@@ -47,6 +48,7 @@ export default function ServicesEditor() {
                 <label>Precio $<input type="number" step="0.5" defaultValue={+s.price || ''} placeholder="sin precio" onBlur={(e) => save(s.id, { price: e.target.value === '' ? 0 : e.target.value })} /></label>
                 <label className="chk"><input type="checkbox" defaultChecked={s.price_from} onChange={(e) => save(s.id, { price_from: e.target.checked })} />"Desde"</label>
                 <label>Minutos<input type="number" defaultValue={s.duration_min} onBlur={(e) => save(s.id, { duration_min: e.target.value })} /></label>
+                {'return_weeks' in s && <label>Volver cada (semanas)<input type="number" min="1" max="104" defaultValue={s.return_weeks ?? ''} placeholder="no avisar" onBlur={(e) => String(s.return_weeks ?? '') !== e.target.value && save(s.id, { return_weeks: e.target.value })} /></label>}
                 <label className="chk"><input type="checkbox" defaultChecked={s.is_active} onChange={(e) => save(s.id, { is_active: e.target.checked })} />Disponible</label>
               </div>
             </div>

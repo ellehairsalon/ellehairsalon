@@ -1,6 +1,7 @@
-import '@fontsource-variable/source-serif-4/opsz.css';
-import '@fontsource-variable/source-serif-4/opsz-italic.css';
-import '@fontsource-variable/hanken-grotesk/index.css';
+import '@fontsource-variable/playfair-display/index.css';
+import '@fontsource-variable/playfair-display/wght-italic.css';
+import '@fontsource-variable/albert-sans/index.css';
+import '@fontsource-variable/albert-sans/wght-italic.css';
 import './globals.css';
 
 export const metadata = {

@@ -10,14 +10,14 @@ const tabs = [
   { href: '/admin/ajustes', label: 'Ajustes', icon: '⚙️' },
 ];
 
-export default function TabBar({ pending = 0, lowStock = 0 }) {
+export default function TabBar({ pending = 0, lowStock = 0, follow = 0 }) {
   const p = usePathname();
   if (p.startsWith('/admin/login')) return null;
   return (
     <nav className="tabbar">
       {tabs.map((t) => {
-        const on = t.href === '/admin' ? p === '/admin' : p.startsWith(t.href);
-        return <a key={t.href} href={t.href} className={on ? 'on' : ''}><span>{t.icon}{t.href === '/admin/pendientes' && pending > 0 && <i className="badge">{pending}</i>}{t.href === '/admin/inventario' && lowStock > 0 && <i className="badge">{lowStock}</i>}</span>{t.label}</a>;
+        const on = t.href === '/admin' ? p === '/admin' : p.startsWith(t.href) || (t.href === '/admin/clientas' && p.startsWith('/admin/seguimiento'));
+        return <a key={t.href} href={t.href} className={on ? 'on' : ''}><span>{t.icon}{t.href === '/admin/pendientes' && pending > 0 && <i className="badge">{pending}</i>}{t.href === '/admin/clientas' && follow > 0 && <i className="badge">{follow}</i>}{t.href === '/admin/inventario' && lowStock > 0 && <i className="badge">{lowStock}</i>}</span>{t.label}</a>;
       })}
     </nav>
   );
