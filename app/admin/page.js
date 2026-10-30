@@ -3,6 +3,7 @@ import { db } from '@/lib/slots';
 import { isAdmin } from '@/lib/admin';
 import DayView from './DayView';
 import NewAppt from './NewAppt';
+import { paySupported } from '@/lib/notify';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,9 +17,10 @@ export default async function Admin({ searchParams }) {
   const date = /^\d{4}-\d{2}-\d{2}$/.test(sp.date || '') ? sp.date : today();
   const [m, d] = [+date.slice(5, 7), +date.slice(8, 10)];
 
+  const payCols = (await paySupported()) ? ',paid_amount,paid_method' : ''; // columnas de migration-15
   const [{ data }, { data: bdays }, { data: cfg }] = await Promise.all([
     db.from('appointments')
-      .select('id,client_id,starts_at,ends_at,status,price,early_fee,notes,client_note,manage_token,group_id,guest_name,checked_in_at,started_at,change_starts_at,services(name,service_categories(name)),stylists(name),clients(full_name,phone,internal_notes)')
+      .select('id,client_id,starts_at,ends_at,status,price,early_fee,notes,client_note,manage_token,group_id,guest_name,checked_in_at,started_at,change_starts_at,services(name,service_categories(name)),stylists(name),clients(full_name,phone,internal_notes)' + payCols)
       .gte('starts_at', `${date}T00:00:00${TZ}`).lte('starts_at', `${date}T23:59:59${TZ}`)
       .neq('status', 'cancelled').order('starts_at'),
     db.from('clients').select('id,full_name').eq('birthday_month', m).eq('birthday_day', d),
@@ -31,6 +33,10 @@ export default async function Admin({ searchParams }) {
     const w = new Date(+new Date(a.starts_at) - 5 * 3600000);
     return { ...a, early: !!openMin && w.getUTCHours() * 60 + w.getUTCMinutes() < openMin };
   });
+  const METHOD_NAME = { efectivo: 'Efectivo', transferencia: 'Transferencia', tarjeta: 'Tarjeta', otro: 'Otro' };
+  const byMethod = {};
+  appts.forEach((a) => { if (a.paid_amount != null) byMethod[a.paid_method || 'efectivo'] = (byMethod[a.paid_method || 'efectivo'] || 0) + +a.paid_amount; });
+  const paidTotal = Object.values(byMethod).reduce((n, v) => n + v, 0);
   const label = new Date(date + 'T12:00:00Z')
     .toLocaleDateString('es-EC', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
 
@@ -43,6 +49,7 @@ export default async function Admin({ searchParams }) {
       </div>
       <h1 className="dayh">{label.charAt(0).toUpperCase() + label.slice(1)}</h1>
       <p className="sub-note">{(data || []).filter((x) => x.status !== 'pending').length} {(data || []).filter((x) => x.status !== 'pending').length === 1 ? 'cita' : 'citas'}{(data || []).some((x) => x.status === 'pending') && ` · ${(data || []).filter((x) => x.status === 'pending').length} por confirmar`}</p>
+      {paidTotal > 0 && <p className="paid-sum">💵 Cobrado este día: <b>${paidTotal.toFixed(2).replace(/\.00$/, '')}</b>{Object.entries(byMethod).map(([k, v]) => <span key={k}>{METHOD_NAME[k] || k} ${v.toFixed(2).replace(/\.00$/, '')}</span>)}</p>}
       {bdays?.length > 0 && <p className="bday">🎂 Cumpleaños: {bdays.map((b) => b.full_name).join(', ')}</p>}
       <DayView appts={appts} isToday={date === today()} policyHours={hours} bonus={cfg?.early_bonus} />
       <NewAppt policyHours={hours} bonus={cfg?.early_bonus} />

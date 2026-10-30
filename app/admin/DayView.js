@@ -10,6 +10,9 @@ const hm = (iso) => new Date(iso).toLocaleTimeString('es-EC', { hour: '2-digit',
 const longDate = (iso) => new Date(iso).toLocaleDateString('es-EC', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'America/Guayaquil' });
 const COLORS = ['#f3d9e4', '#dfe8f6', '#e1efe3', '#f6ecd2', '#e7ddf3'];
 const colorOf = (n = '') => COLORS[[...n].reduce((a, c) => a + c.charCodeAt(0), 0) % COLORS.length];
+const METHODS = [['efectivo', '💵 Efectivo'], ['transferencia', '🏦 Transferencia'], ['tarjeta', '💳 Tarjeta'], ['otro', 'Otro']];
+const METHOD_NAME = { efectivo: 'Efectivo', transferencia: 'Transferencia', tarjeta: 'Tarjeta', otro: 'Otro' };
+const usd = (n) => `$${(+n).toFixed(2).replace(/\.00$/, '')}`;
 const STATUS = { pending: 'Por confirmar', completed: 'Completada', no_show: 'No vino' };
 
 // Citas que coinciden en el tiempo se dibujan lado a lado.
@@ -33,6 +36,7 @@ export default function DayView({ appts, isToday, policyHours = 10, bonus }) {
   const [note, setNote] = useState('');
   const [undo, setUndo] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [pay, setPay] = useState(null); // ventana de cobro: { a, amount, method, edit }
   const timer = useRef(null);
   const nowMin = min(new Date().toISOString());
   const items = layout(appts);
@@ -62,6 +66,27 @@ export default function DayView({ appts, isToday, policyHours = 10, bonus }) {
   async function quick(a, action) { // Llegó / Empezar
     const j = await call(a.id, action);
     if (j) { setSel(null); showUndo({ id: a.id, action: 'revert', extra: { prev: j.prev } }); }
+  }
+
+  // Al tocar "Terminó" se pregunta cuánto cobró Elena (viene escrito el precio de lista) y cómo le pagaron.
+  function openPay(a, edit = false) {
+    let method = 'efectivo';
+    try { method = localStorage.getItem('elle_pay_method') || 'efectivo'; } catch {}
+    const list = +a.price + +a.early_fee;
+    const amount = edit && a.paid_amount != null ? String(a.paid_amount) : list > 0 ? String(Math.round(list * 100) / 100) : '';
+    setPay({ a, amount, method: edit && a.paid_method ? a.paid_method : method, edit, list });
+    setSel(null);
+  }
+  async function savePay(skip = false) {
+    const { a, amount, method, edit } = pay;
+    const body = skip ? {} : { amount, method };
+    if (!skip && (amount === '' || Number.isNaN(+amount) || +amount < 0)) { alert('Escribe cuánto cobraste (puede ser 0).'); return; }
+    const j = await call(a.id, edit ? 'pay' : 'complete', body);
+    if (!j) return;
+    try { if (!skip) localStorage.setItem('elle_pay_method', method); } catch {}
+    setPay(null);
+    if (!edit) showUndo({ id: a.id, action: 'restore' });
+    if (j.paidSaved === false) alert('La cita se terminó, pero el cobro no se guardó: falta correr migration-15.sql en Supabase.');
   }
 
   const hours = Array.from({ length: END - START }, (_, i) => START + i);
@@ -118,6 +143,12 @@ export default function DayView({ appts, isToday, policyHours = 10, bonus }) {
                 {live && <span className="m-chip ok">En atención</span>}
                 {here && <span className="m-chip warn">En espera</span>}
               </div>
+              {st === 'completed' && (
+                <div className="m-pay">
+                  <span>{sel.paid_amount != null ? <>💵 Cobrado <b>{usd(sel.paid_amount)}</b> · {METHOD_NAME[sel.paid_method] || 'Efectivo'}</> : 'Sin cobro registrado'}</span>
+                  <button className="btn soft sm" onClick={() => openPay(sel, true)}>{sel.paid_amount != null ? 'Corregir' : 'Registrar cobro'}</button>
+                </div>
+              )}
               {sel.change_starts_at && (
                 <a className="m-alert" href="/admin/pendientes">⏳ Pidió cambiar su cita a {longDate(sel.change_starts_at)} a las {hm(sel.change_starts_at)}. <b>Responder →</b></a>
               )}
@@ -129,7 +160,7 @@ export default function DayView({ appts, isToday, policyHours = 10, bonus }) {
                 <div className="m-row main">
                   {!sel.started_at && !sel.checked_in_at && <button className="btn tint" disabled={busy} onClick={() => quick(sel, 'checkin')}>Llegó</button>}
                   {!sel.started_at && <button className="btn tint" disabled={busy} onClick={() => quick(sel, 'start')}>Empezar</button>}
-                  <button className="btn primary" disabled={busy} onClick={() => act(sel, 'complete')}>✓ Terminó</button>
+                  <button className="btn primary" disabled={busy} onClick={() => openPay(sel)}>✓ Terminó</button>
                 </div>
               )}
 
@@ -156,6 +187,30 @@ export default function DayView({ appts, isToday, policyHours = 10, bonus }) {
           </div>
         );
       })()}
+      {pay && (
+        <div className="modal-scrim" onClick={() => setPay(null)}>
+          <div className="modal pay-modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-x" onClick={() => setPay(null)} aria-label="Cerrar">✕</button>
+            <h2>{pay.edit ? 'Cobro de la cita' : '¿Cuánto cobraste?'}</h2>
+            <p className="pay-who">{pay.a.guest_name || pay.a.clients.full_name} · {pay.a.services.name}</p>
+            <label className="pay-amt" htmlFor="pay-amount">
+              <span>$</span>
+              <input id="pay-amount" inputMode="decimal" autoFocus value={pay.amount} placeholder="0" onChange={(e) => setPay({ ...pay, amount: e.target.value.replace(',', '.').replace(/[^0-9.]/g, '') })} />
+            </label>
+            {pay.list > 0 && +pay.amount !== pay.list && (
+              <button className="lnk pay-list" onClick={() => setPay({ ...pay, amount: String(Math.round(pay.list * 100) / 100) })}>Usar el precio de lista: {usd(pay.list)}</button>
+            )}
+            {pay.list === 0 && !pay.amount && <p className="note">Esta cita no tiene precio de lista: escribe lo que cobraste.</p>}
+            <div className="pay-methods" role="radiogroup" aria-label="Forma de pago">
+              {METHODS.map(([k, label]) => (
+                <button key={k} role="radio" aria-checked={pay.method === k} className={'pill' + (pay.method === k ? ' on' : '')} onClick={() => setPay({ ...pay, method: k })}>{label}</button>
+              ))}
+            </div>
+            <button className="btn primary full" disabled={busy} onClick={() => savePay(false)}>{pay.edit ? 'Guardar cobro' : 'Guardar y terminar cita'}</button>
+            {!pay.edit && <button className="lnk pay-skip" disabled={busy} onClick={() => savePay(true)}>Terminar sin registrar el cobro</button>}
+          </div>
+        </div>
+      )}
     </>
   );
 }

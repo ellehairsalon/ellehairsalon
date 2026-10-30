@@ -1,8 +1,11 @@
 import { db, getGroupSlots, moveGroup, earlyFeeFor } from '@/lib/slots';
 import { isAdmin } from '@/lib/admin';
-import { notifySupported } from '@/lib/notify';
+import { notifySupported, paySupported } from '@/lib/notify';
 
 const bad = (error, status) => Response.json({ error }, { status });
+const METHODS = ['efectivo', 'transferencia', 'tarjeta', 'otro'];
+// Monto cobrado: número >= 0 con hasta 2 decimales, o null si no se registra.
+const money = (v) => (v === '' || v === null || v === undefined || Number.isNaN(+v) || +v < 0 || +v > 100000 ? null : Math.round(+v * 100) / 100);
 const BUSY = 'No se pudo completar. ¿Ese horario ya está ocupado?';
 const snap = (a) => ({
   starts_at: a.starts_at, ends_at: a.ends_at, started_at: a.started_at,
@@ -11,7 +14,7 @@ const snap = (a) => ({
 
 export async function POST(req) {
   if (!(await isAdmin())) return bad('No autorizado', 401);
-  const { id, action, notes, prev, starts_at } = await req.json();
+  const { id, action, notes, prev, starts_at, amount, method } = await req.json();
   if (!id) return bad('Datos inválidos', 400);
 
   // "Llegó" y "Empezar": se pueden usar aunque Elena ya esté atendiendo a otra clienta.
@@ -129,19 +132,36 @@ export async function POST(req) {
     return Response.json({ ok: true });
   }
 
+  // Cobro de una cita ya terminada (registrarlo después o corregirlo).
+  if (action === 'pay') {
+    if (!(await paySupported())) return bad('Falta correr migration-15.sql en Supabase para guardar cobros.', 409);
+    const amt = money(amount);
+    if (amt === null) return bad('Escribe cuánto cobraste.', 400);
+    const { data, error } = await db.from('appointments').update({
+      paid_amount: amt, paid_method: METHODS.includes(method) ? method : 'efectivo', paid_at: new Date().toISOString(),
+    }).eq('id', id).eq('status', 'completed').select('id');
+    if (error) return bad(BUSY, 409);
+    return data?.length ? Response.json({ ok: true }) : bad('Esa cita ya no está terminada.', 409);
+  }
+
+  let paidSaved = true;
   let q = db.from('appointments');
   if (action === 'note') q = q.update({ notes: String(notes || '').slice(0, 500) }).eq('id', id);
   else if (action === 'restore')
-    q = q.update({ status: 'confirmed', cancelled_at: null, cancelled_late: false }).eq('id', id).neq('status', 'confirmed');
+    q = q.update({ status: 'confirmed', cancelled_at: null, cancelled_late: false, ...((await paySupported()) ? { paid_amount: null, paid_method: null, paid_at: null } : {}) }).eq('id', id).neq('status', 'confirmed');
   else {
+    const amt = money(amount);
+    const paid = action === 'complete' && amt !== null && (await paySupported())
+      ? { paid_amount: amt, paid_method: METHODS.includes(method) ? method : 'efectivo', paid_at: new Date().toISOString() } : {};
+    if (action === 'complete' && amt !== null && !Object.keys(paid).length) paidSaved = false; // falta migration-15: la cita se termina, pero el cobro no se guardó
     const patch = {
       cancel: { status: 'cancelled', cancelled_at: new Date().toISOString() },
-      complete: { status: 'completed' },
+      complete: { status: 'completed', ...paid },
       no_show: { status: 'no_show' },
     }[action];
     if (!patch) return bad('Datos inválidos', 400);
     q = q.update(patch).eq('id', id).eq('status', 'confirmed');
   }
   const { error } = await q;
-  return error ? bad(BUSY, 409) : Response.json({ ok: true });
+  return error ? bad(BUSY, 409) : Response.json({ ok: true, paidSaved });
 }
