@@ -99,7 +99,7 @@ export default function DayView({ appts, isToday, policyHours = 10, bonus }) {
         {isToday && nowMin >= START * 60 && nowMin < END * 60 && <div className="now" style={{ top: ((nowMin - START * 60) * PX) / 60 }} />}
         {items.map(({ a, s, e, col, cols }) => (
           <button key={a.id}
-            className={'blk' + (a.status === 'pending' ? ' pend' : a.status !== 'confirmed' ? ' done' : '') + (a.started_at && a.status === 'confirmed' ? ' live' : '') + (a.checked_in_at && !a.started_at ? ' here' : '') + (a.early || a.early_fee > 0 ? ' prio' : '')}
+            className={'blk' + (a.status === 'pending' ? ' pend' : a.status !== 'confirmed' ? ' done' : '') + (a.started_at && a.status === 'confirmed' ? ' live' : '') + (a.checked_in_at && !a.started_at ? ' here' : '') + (a.early || a.early_fee > 0 ? ' prio' : '') + (((e - s) * PX) / 60 - 5 < 56 ? ' short' : '')}
             style={{
               top: ((s - START * 60) * PX) / 60 + 2, height: Math.max(((e - s) * PX) / 60 - 5, 30),
               left: `calc(${(col / cols) * 100}% + 4px)`, width: `calc(${100 / cols}% - 6px)`, right: 'auto',
