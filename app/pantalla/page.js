@@ -117,7 +117,7 @@ export default function Screen() {
             <div className="sc-label"><i className="dot next" />Siguientes turnos</div>
             {d.next.length === 0 && <p className="dim">No hay más citas por ahora</p>}
             {d.next.slice(0, 4).map((x, i) => (
-              <div className="sc-item" key={i}><span>{x.name}<small>{x.service}</small></span><span className="pill">{hm(x.starts_at)}</span></div>
+              <div className="sc-item" key={i}><span>{x.name}<small>{x.service}</small></span><span className="sc-pill">{hm(x.starts_at)}</span></div>
             ))}
           </div>
         </div>
