@@ -13,7 +13,7 @@ async function businessJson() {
   const j = { '@context': 'https://schema.org', '@type': 'HairSalon', name: 'Elle Hair Salon', url: site, image: `${site}/icon-512.png`, priceRange: '$$' };
   if (process.env.SALON_PHONE) j.telephone = process.env.SALON_PHONE;
   if (process.env.SALON_ADDRESS) j.address = { '@type': 'PostalAddress', streetAddress: process.env.SALON_ADDRESS, addressLocality: process.env.SALON_CITY || undefined, addressCountry: 'EC' };
-  const open = (hrs || []).filter((h) => h.is_open);
+  const open = (Array.isArray(hrs) ? hrs : []).filter((h) => h.is_open);
   if (open.length) j.openingHoursSpecification = open.map((h) => ({ '@type': 'OpeningHoursSpecification', dayOfWeek: DAYS[h.weekday], opens: h.open_time.slice(0, 5), closes: h.close_time.slice(0, 5) }));
   return j;
 }
