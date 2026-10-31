@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import { db, getGroupSlots, earlyFeeFor } from '@/lib/slots';
 import { normPhone } from '@/lib/validate';
+import { tooMany, clientIp } from '@/lib/ratelimit';
 
 const err = (error, status) => Response.json({ error }, { status });
 const toMin = (t) => { const [h, m] = t.split(':'); return +h * 60 + +m; };
@@ -28,6 +29,8 @@ const MAX_PEOPLE = 5;
 
 export async function POST(req) {
   const body = await req.json();
+  if (body.website) return Response.json({ ok: true }); // campo trampa: solo los robots lo llenan; se les responde "ok" sin guardar nada
+  if (await tooMany(`book:${clientIp(req)}`, 8, 3600)) return err('Hiciste muchas solicitudes seguidas. Inténtalo de nuevo en un rato o escríbenos por WhatsApp.', 429);
   const { starts_at, name, phone, note } = body;
   // items: un servicio por persona. El primero es quien reserva; los demás son invitados con su nombre.
   const raw = Array.isArray(body.items) && body.items.length ? body.items : [{ service_id: body.service_id }];

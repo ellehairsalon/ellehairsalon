@@ -4,6 +4,7 @@ import ServicesEditor from './ServicesEditor';
 import Closures from './Closures';
 import ScheduleEditor from './ScheduleEditor';
 import BookingSettings from './BookingSettings';
+import Backup from './Backup';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,6 +23,7 @@ export default async function Settings() {
       <Fold title="💇 Servicios y precios"><ServicesEditor /></Fold>
       <Fold title="🕘 Horario de atención"><ScheduleEditor /></Fold>
       <Fold title="🚫 Cerrar horarios"><Closures /></Fold>
+      <Fold title="💾 Copia de seguridad"><Backup /></Fold>
     </main>
   );
 }

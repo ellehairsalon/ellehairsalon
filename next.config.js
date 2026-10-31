@@ -1,0 +1,9 @@
+// Cabeceras de seguridad para todo el sitio.
+const headers = [
+  { key: 'X-Frame-Options', value: 'DENY' }, // nadie puede incrustar el sitio dentro de otra página
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+  { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains' },
+  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), payment=()' },
+];
+module.exports = { async headers() { return [{ source: '/:path*', headers }]; } };

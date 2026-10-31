@@ -1,4 +1,5 @@
 'use client';
+import AddToCalendar from '../../AddToCalendar';
 import { useState, useEffect, useCallback } from 'react';
 import { WHATSAPP } from '@/lib/config';
 import { PRIORITY_NAME } from '@/lib/priority';
@@ -134,6 +135,10 @@ export default function Manage({ token }) {
           <b>⏳ Pediste cambiar tu cita a {fmt(a.change)}</b>
           <p className="note" style={{ margin: '4px 0 0' }}>El salón debe confirmarlo; mientras tanto tu cita de arriba sigue en pie.</p>
         </div>
+      )}
+
+      {mode === 'view' && a.status === 'confirmed' && (
+        <AddToCalendar token={token} start={a.starts_at} end={items.reduce((m, x) => (x.ends_at && +new Date(x.ends_at) > +new Date(m) ? x.ends_at : m), items[0].ends_at || a.starts_at)} title={`Elle Hair Salon · ${[...new Set(items.map((x) => x.service))].join(', ')}`} />
       )}
 
       {mode === 'view' && (

@@ -1,7 +1,10 @@
 import crypto from 'crypto';
 import { makeSession } from '@/lib/admin';
+import { tooMany, clientIp } from '@/lib/ratelimit';
 
 export async function POST(req) {
+  if (await tooMany(`login:${clientIp(req)}`, 6, 900))
+    return Response.json({ error: 'Demasiados intentos. Espera unos minutos e inténtalo de nuevo.' }, { status: 429 });
   const { password } = await req.json();
   const real = process.env.ADMIN_PASSWORD || '';
   const hash = (s) => crypto.createHash('sha256').update(String(s || '')).digest();

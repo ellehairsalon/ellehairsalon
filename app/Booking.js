@@ -1,4 +1,5 @@
 'use client';
+import AddToCalendar from './AddToCalendar';
 import { useState, useEffect, useRef } from 'react';
 import { WHATSAPP } from '@/lib/config';
 import { PRIORITY_NAME, DEFAULT_BONUS, money, feeTag, priceLabel } from '@/lib/priority';
@@ -43,6 +44,7 @@ export default function Booking({ showPrices = false, categories, review = true,
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(null);
+  const [trap, setTrap] = useState(''); // campo trampa anti-robots (las personas no lo ven)
   useEffect(() => {
     document.body.dataset.step = done ? 'done' : String(step);
     return () => { delete document.body.dataset.step; };
@@ -100,7 +102,7 @@ export default function Booking({ showPrices = false, categories, review = true,
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           items: party.map((x) => ({ service_id: x.svc.id, guest_name: x.guest })),
-          starts_at: slot.starts_at, name, phone, note,
+          starts_at: slot.starts_at, name, phone, note, website: trap,
         }),
       });
       const j = await r.json();
@@ -171,6 +173,7 @@ export default function Booking({ showPrices = false, categories, review = true,
           <p className="note center">Tu cita se confirma cuando recibas nuestro mensaje de WhatsApp al {phone.trim()}.</p>
         ) : (
           <>
+            {done.token && <AddToCalendar token={done.token} start={slot.starts_at} end={new Date(+new Date(slot.starts_at) + plan.reduce((n, x) => n + x.svc.duration_min, 0) * 60000).toISOString()} title={`Elle Hair Salon · ${[...new Set(plan.map((x) => x.svc.name))].join(', ')}`} />}
             <a className="cta linkbtn" href={link}>Ver o cambiar mi cita</a>
             <p className="note center">Puedes cambiarla o cancelarla antes del {deadlineText(slot.starts_at, policyHours)}.</p>
           </>
@@ -294,6 +297,7 @@ export default function Booking({ showPrices = false, categories, review = true,
           <h2>Tus <em>datos</em></h2>
           <p className="recap">{party.map((x) => x.svc.name).join(' + ')} · {cap1(longDay(date))}, {slot.time}</p>
           <label>Tu nombre<input value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" /></label>
+          <div className="hp" aria-hidden="true"><label>Sitio web<input name="website" value={trap} onChange={(e) => setTrap(e.target.value)} tabIndex={-1} autoComplete="off" /></label></div>
           <label>WhatsApp<input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" placeholder="09XXXXXXXX" autoComplete="tel" /></label>
           <button className="cta" disabled={name.trim().length < 2 || phone.replace(/\D/g, '').length < 9} onClick={() => setStep(4)}>Continuar</button>
         </section>
