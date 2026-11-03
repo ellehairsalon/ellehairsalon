@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 export default async function Page() {
   if (!(await isAdmin())) redirect('/admin/login');
   const { data } = await db.from('inventory_items')
-    .select('id,name,category,qty,min_qty,unit,note,updated_at').eq('is_active', true).order('name');
+    .select('id,name,category,brand,code,size_amt,size_unit,qty,min_qty,unit,note,updated_at').eq('is_active', true).order('name');
   return (
     <main className="wide">
       <Inventory initial={data || []} />
