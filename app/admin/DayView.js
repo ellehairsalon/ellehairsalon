@@ -1,5 +1,5 @@
 'use client';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { waLink, confirmText } from '@/lib/wa';
 import { svcEmoji } from '@/lib/emoji';
@@ -30,7 +30,7 @@ function layout(appts) {
   return out;
 }
 
-export default function DayView({ appts, isToday, policyHours = 10, bonus }) {
+export default function DayView({ appts, isToday, date, policyHours = 10, bonus }) {
   const router = useRouter();
   const [sel, setSel] = useState(null);
   const [note, setNote] = useState('');
@@ -38,10 +38,17 @@ export default function DayView({ appts, isToday, policyHours = 10, bonus }) {
   const [busy, setBusy] = useState(false);
   const [pay, setPay] = useState(null); // ventana de cobro: { a, amount, method, edit }
   const timer = useRef(null);
+  const [ghost, setGhost] = useState(null); // vista previa de la cita que se está agendando
+  const [hover, setHover] = useState(null); // minuto del hueco bajo el mouse
+  useEffect(() => {
+    const on = (e) => setGhost(e.detail && e.detail.date === date ? e.detail : null);
+    window.addEventListener('elle:preview', on);
+    return () => window.removeEventListener('elle:preview', on);
+  }, [date]);
   const nowMin = min(new Date().toISOString());
   const items = layout(appts);
-  const START = Math.min(6, ...items.map((i) => Math.floor(i.s / 60)));
-  const END = Math.max(20, ...items.map((i) => Math.ceil(i.e / 60)));
+  const START = Math.min(6, ...items.map((i) => Math.floor(i.s / 60)), ...(ghost ? [Math.floor(ghost.s / 60)] : []));
+  const END = Math.max(20, ...items.map((i) => Math.ceil(i.e / 60)), ...(ghost ? [Math.ceil(ghost.e / 60)] : []));
 
   async function call(id, action, extra) {
     setBusy(true);
@@ -94,7 +101,12 @@ export default function DayView({ appts, isToday, policyHours = 10, bonus }) {
 
   return (
     <>
-      <div className="tl" style={{ height: (END - START) * PX }}>
+      <div className="tl" style={{ height: (END - START) * PX }}
+        onMouseMove={(e) => { if (e.target.closest('.blk')) { setHover(null); return; } const y = e.clientY - e.currentTarget.getBoundingClientRect().top; setHover(Math.floor(((y / PX) * 60 + START * 60) / 30) * 30); }}
+        onMouseLeave={() => setHover(null)}
+        onClick={(e) => { if (e.target.closest('.blk')) return; const y = e.clientY - e.currentTarget.getBoundingClientRect().top; const m = Math.floor(((y / PX) * 60 + START * 60) / 30) * 30; window.dispatchEvent(new CustomEvent('elle:new', { detail: { date, min: m } })); }}>
+        {hover !== null && !ghost && <div className="tl-hover" style={{ top: ((hover - START * 60) * PX) / 60, height: PX / 2 }}><span>＋ Agendar {String(Math.floor(hover / 60)).padStart(2, '0')}:{String(hover % 60).padStart(2, '0')}</span></div>}
+        {ghost && <div className="blk ghost" style={{ top: ((ghost.s - START * 60) * PX) / 60 + 2, height: Math.max(((ghost.e - ghost.s) * PX) / 60 - 5, 30), left: '4px', width: 'calc(100% - 6px)', right: 'auto' }}><b>{ghost.label}</b><span>{String(Math.floor(ghost.s / 60)).padStart(2, '0')}:{String(ghost.s % 60).padStart(2, '0')} · nueva cita</span></div>}
         {hours.map((h) => <div key={h} className="hr" style={{ top: (h - START) * PX }}><span>{h}:00</span></div>)}
         {isToday && nowMin >= START * 60 && nowMin < END * 60 && <div className="now" style={{ top: ((nowMin - START * 60) * PX) / 60 }} />}
         {items.map(({ a, s, e, col, cols }) => (

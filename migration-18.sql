@@ -41,8 +41,8 @@ update inventory_items set category = 'Tintes' where category = 'Color';
 -- Las cantidades son las de la hoja: en el primer conteo Elena las confirma o corrige.
 -- Los colores que Elena ya había cargado a mano SIEMPRE conservan su cantidad (es más reciente que la hoja).
 
-create temp table if not exists _seed (brand text, code text, name text, qty numeric) on commit drop;
-truncate _seed;
+drop table if exists _seed;
+create temp table _seed (brand text, code text, name text, qty numeric);
 
 insert into _seed (brand, code, qty) values
   -- Yellow
@@ -88,3 +88,5 @@ where not exists (
   select 1 from inventory_items i
   where i.is_active and i.category = 'Tintes' and i.code = s.code and i.brand = s.brand
 );
+
+drop table if exists _seed;

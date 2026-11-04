@@ -2,7 +2,6 @@ import { redirect } from 'next/navigation';
 import { db } from '@/lib/slots';
 import { isAdmin } from '@/lib/admin';
 import DayView from './DayView';
-import NewAppt from './NewAppt';
 import { paySupported } from '@/lib/notify';
 
 export const dynamic = 'force-dynamic';
@@ -51,8 +50,7 @@ export default async function Admin({ searchParams }) {
       <p className="sub-note">{(data || []).filter((x) => x.status !== 'pending').length} {(data || []).filter((x) => x.status !== 'pending').length === 1 ? 'cita' : 'citas'}{(data || []).some((x) => x.status === 'pending') && ` · ${(data || []).filter((x) => x.status === 'pending').length} por confirmar`}</p>
       {paidTotal > 0 && <p className="paid-sum">💵 Cobrado este día: <b>${paidTotal.toFixed(2).replace(/\.00$/, '')}</b>{Object.entries(byMethod).map(([k, v]) => <span key={k}>{METHOD_NAME[k] || k} ${v.toFixed(2).replace(/\.00$/, '')}</span>)}</p>}
       {bdays?.length > 0 && <p className="bday">🎂 Cumpleaños: {bdays.map((b) => b.full_name).join(', ')}</p>}
-      <DayView appts={appts} isToday={date === today()} policyHours={hours} bonus={cfg?.early_bonus} />
-      <NewAppt policyHours={hours} bonus={cfg?.early_bonus} />
+      <DayView appts={appts} date={date} isToday={date === today()} policyHours={hours} bonus={cfg?.early_bonus} />
     </main>
   );
 }

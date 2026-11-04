@@ -34,6 +34,7 @@ export default function Follow({ data, origin, months, paid, low }) {
       <p className="fu-when">{when(i.days)} · cada {i.weeks} sem.</p>
       <div className="fu-btns">
         <a className="btn wa" href={waLink(i.phone, followText(i, origin))} target="_blank" rel="noopener noreferrer" onClick={() => !waitingCard && act(i, 'contacted')}>Escribir por WhatsApp</a>
+        <button className="btn primary sm" onClick={() => window.dispatchEvent(new CustomEvent('elle:new', { detail: { client: { id: i.client_id, full_name: i.name, phone: i.phone }, services: [i.service_id] } }))}>Agendar</button>
         {waitingCard
           ? <button className="btn soft sm" disabled={busy === i.client_id} onClick={() => act(i, 'undo')}>Volver a la lista</button>
           : <button className="btn soft sm" disabled={busy === i.client_id} onClick={() => act(i, 'contacted')}>Ya la contacté</button>}

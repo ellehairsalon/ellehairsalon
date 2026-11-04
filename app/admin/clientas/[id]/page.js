@@ -1,3 +1,4 @@
+import NewApptButton from '../../NewApptButton';
 import { redirect } from 'next/navigation';
 import { db } from '@/lib/slots';
 import { isAdmin } from '@/lib/admin';
@@ -29,6 +30,7 @@ export default async function Client({ params }) {
         <div>
           <h1>{c.full_name}</h1>
           <a target="_blank" rel="noopener noreferrer" className="pill-link" href={`https://wa.me/${c.phone.replace(/\D/g, '')}`}>💬 {c.phone}</a>
+          <div style={{ marginTop: 10 }}><NewApptButton client={{ id: c.id, full_name: c.full_name, phone: c.phone }} /></div>
         </div>
       </div>
       <div className="stats">

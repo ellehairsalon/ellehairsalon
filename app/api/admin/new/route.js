@@ -1,15 +1,11 @@
-import { db, getSlots } from '@/lib/slots';
+import { randomUUID } from 'crypto';
+import { db, getGroupSlots, earlyFeeFor } from '@/lib/slots';
 import { isAdmin } from '@/lib/admin';
+import { normPhone } from '@/lib/validate';
 
-const normPhone = (raw) => {
-  let d = String(raw || '').replace(/\D/g, '');
-  if (d.startsWith('00')) d = d.slice(2);
-  else if (d.startsWith('0')) d = '593' + d.slice(1);
-  else if (d.length === 9 && d.startsWith('9')) d = '593' + d; // celular escrito sin el 0
-  return d.length >= 11 && d.length <= 15 ? '+' + d : null;
-};
 const bad = (error, status) => Response.json({ error }, { status });
 const ACTIVE = 'No se pudo guardar. Si el cliente ya tiene otra cita pendiente, usa "Llegó" o "Empezar" en esa cita, o márcala como terminada o cancélala primero.';
+const MAX_SERVICES = 6;
 
 async function findClient(p, n) {
   let { data: client } = await db.from('clients').select('id').eq('phone', p).maybeSingle();
@@ -18,52 +14,83 @@ async function findClient(p, n) {
   return client;
 }
 
+// Estilistas activas que hacen TODOS los servicios, en orden. Se prefiere una libre en ese rato; si no hay, se permite el traslape.
+async function pickStylist(ids, startIso, endIso) {
+  const { data: links } = await db.from('stylist_services').select('service_id,stylists!inner(id,is_bookable,sort_order)')
+    .in('service_id', ids).eq('stylists.is_bookable', true);
+  const per = {};
+  (links || []).forEach((l) => { (per[l.stylists.id] ||= { st: l.stylists, n: new Set() }).n.add(l.service_id); });
+  const cands = Object.values(per).filter((x) => x.n.size === ids.length).map((x) => x.st).sort((a, b) => a.sort_order - b.sort_order);
+  if (!cands.length) return null;
+  for (const c of cands) {
+    const { count } = await db.from('appointments').select('id', { count: 'exact', head: true })
+      .eq('stylist_id', c.id).in('status', ['confirmed', 'pending']).lt('starts_at', endIso).gt('ends_at', startIso);
+    if (!count) return { id: c.id, overlap: false };
+  }
+  return { id: cands[0].id, overlap: true };
+}
+
 export async function POST(req) {
   if (!(await isAdmin())) return bad('No autorizado', 401);
-  const { service_id, starts_at, name, phone, walk_in, start_now } = await req.json();
-  const p = normPhone(phone), n = String(name || '').trim();
+  const body = await req.json();
+  const { starts_at, name, phone, walk_in, start_now, force } = body;
+  const notes = String(body.notes || '').trim().slice(0, 500) || null;
+  const p = normPhone(phone), n = String(name || '').trim().slice(0, 100);
   if (!p || n.length < 2) return bad('Revisa el nombre y el WhatsApp.', 400);
 
-  // Llegó sin cita y se atiende ya, aunque haya otro cliente en atención.
-  if (start_now) {
-    const { data: svc } = await db.from('services').select('*').eq('id', service_id).eq('is_active', true).single();
-    if (!svc) return bad('Servicio no disponible.', 400);
-    const now = new Date(); now.setSeconds(0, 0);
-    const start = now.toISOString(), end = new Date(+now + svc.duration_min * 60000).toISOString();
-    const { data: links } = await db.from('stylist_services').select('stylists!inner(id,is_bookable,sort_order)')
-      .eq('service_id', service_id).eq('stylists.is_bookable', true);
-    const cands = (links || []).map((l) => l.stylists).sort((a, b) => a.sort_order - b.sort_order);
-    if (!cands.length) return bad('Ninguna estilista activa ofrece este servicio.', 400);
+  const ids = (Array.isArray(body.items) && body.items.length ? body.items : [body.service_id]).slice(0, MAX_SERVICES);
+  if (!ids.length || ids.some((x) => !x)) return bad('Elige al menos un servicio.', 400);
+  const { data: found } = await db.from('services').select('*').in('id', [...new Set(ids)]).eq('is_active', true);
+  const byId = Object.fromEntries((found || []).map((x) => [x.id, x]));
+  const svcs = ids.map((id) => byId[id]);
+  if (svcs.some((x) => !x)) return bad('Un servicio ya no está disponible.', 400);
+  const total = svcs.reduce((s, x) => s + x.duration_min, 0);
 
-    let pick = cands[0], overlap = true; // prefiere una estilista libre; si no hay, se permite el traslape
-    for (const c of cands) {
-      const { count } = await db.from('appointments').select('id', { count: 'exact', head: true })
-        .eq('stylist_id', c.id).in('status', ['confirmed', 'pending']).lt('starts_at', end).gt('ends_at', start);
-      if (!count) { pick = c; overlap = false; break; }
-    }
-    const client = await findClient(p, n);
-    const { error } = await db.from('appointments').insert({
-      client_id: client.id, stylist_id: pick.id, service_id, starts_at: start, ends_at: end, price: svc.price,
-      early_fee: 0, source: 'walk_in', checked_in_at: start, started_at: start, overlap_ok: overlap,
-    });
-    if (error) return error.code === '23505' ? bad(ACTIVE, 409) : bad('No se pudo guardar.', 500);
-    return Response.json({ ok: true });
+  // Hora de inicio y estilista
+  let start, stylist_id, overlap = false;
+  if (start_now) {
+    const now = new Date(); now.setSeconds(0, 0);
+    start = now.toISOString();
+    const pick = await pickStylist([...new Set(ids)], start, new Date(+now + total * 60000).toISOString());
+    if (!pick) return bad('Ninguna estilista activa ofrece estos servicios.', 400);
+    ({ id: stylist_id, overlap } = pick);
+  } else {
+    if (!/^\d{4}-\d{2}-\d{2}T/.test(starts_at || '')) return bad('Elige día y hora.', 400);
+    start = new Date(starts_at).toISOString();
+    const { slots } = await getGroupSlots(String(starts_at).slice(0, 10), ids, [], 0);
+    const slot = slots.find((s) => +new Date(s.starts_at) === +new Date(starts_at));
+    if (slot) stylist_id = slot.stylist_id;
+    else if (force) { // Elena decide agendar fuera de los horarios libres (con aviso previo en pantalla)
+      const pick = await pickStylist([...new Set(ids)], start, new Date(+new Date(start) + total * 60000).toISOString());
+      if (!pick) return bad('Ninguna estilista activa ofrece estos servicios.', 400);
+      ({ id: stylist_id, overlap } = pick);
+    } else return bad('Ese horario ya no está libre.', 409);
   }
 
-  const { slots, svc } = await getSlots(String(starts_at).slice(0, 10), service_id, null, 0);
-  const slot = slots.find((s) => +new Date(s.starts_at) === +new Date(starts_at));
-  if (!slot) return bad('Ese horario ya no está libre.', 409);
   const client = await findClient(p, n);
-  const ends_at = new Date(+new Date(starts_at) + svc.duration_min * 60000).toISOString();
-  const { data: made, error } = await db.from('appointments').insert({
-    client_id: client.id, stylist_id: slot.stylist_id, service_id, starts_at, ends_at,
-    price: svc.price, early_fee: slot.fee, source: walk_in ? 'walk_in' : 'manual',
-    checked_in_at: walk_in ? new Date().toISOString() : null,
-  }).select('manage_token').single();
-  if (error) return bad(ACTIVE, 409);
-  // Datos para que Elena pueda enviar la confirmación por WhatsApp con un toque
+  // Varios servicios = una cita por servicio, una tras otra. Desde el segundo llevan el nombre del cliente en "guest_name"
+  // para que cuenten como la misma persona (la regla es una cita activa por cliente).
+  const group_id = ids.length > 1 ? randomUUID() : null;
+  let cursor = +new Date(start);
+  const rows = [];
+  for (let i = 0; i < svcs.length; i++) {
+    const sv = svcs[i];
+    const s = new Date(cursor).toISOString(), e = new Date(cursor + sv.duration_min * 60000).toISOString();
+    rows.push({
+      client_id: client.id, stylist_id, service_id: sv.id, starts_at: s, ends_at: e, price: sv.price,
+      early_fee: await earlyFeeFor(s, +sv.price), source: start_now || walk_in ? 'walk_in' : 'manual', notes: i === 0 ? notes : null,
+      group_id, guest_name: i === 0 ? null : n, overlap_ok: overlap,
+      ...(start_now && i === 0 ? { checked_in_at: s, started_at: s } : walk_in && i === 0 ? { checked_in_at: new Date().toISOString() } : {}),
+    });
+    cursor += sv.duration_min * 60000;
+  }
+  const { data: made, error } = await db.from('appointments').insert(rows).select('manage_token,starts_at').order('starts_at');
+  if (error) return bad(error.code === '23505' || /duplicate|unique/i.test(error.message || '') ? ACTIVE : 'No se pudo guardar. Revisa que la hora esté libre.', 409);
+
+  const early_fee = rows.reduce((s, r) => s + +r.early_fee, 0);
   return Response.json({ ok: true, appt: {
-    manage_token: made?.manage_token, starts_at, early: !!slot.early, early_fee: slot.fee, service: svc.name,
-    client_name: n, phone: p,
+    manage_token: made?.[0]?.manage_token, starts_at: rows[0].starts_at, early: early_fee > 0, early_fee,
+    service: svcs.map((x) => x.name).join(' + '), client_name: n, phone: p,
+    items: rows.map((r, i) => ({ service: svcs[i].name, starts_at: r.starts_at })),
   } });
 }
