@@ -40,6 +40,9 @@ export default function DayView({ appts, isToday, date, policyHours = 10, bonus 
   const timer = useRef(null);
   const [ghost, setGhost] = useState(null); // vista previa de la cita que se está agendando
   const [hover, setHover] = useState(null); // minuto del hueco bajo el mouse
+  const [drag, setDrag] = useState(null); // { id, mode: 'move'|'resize', mins } mientras Elena arrastra una cita
+  const dragRef = useRef(null);
+  const wasDrag = useRef(false);
   useEffect(() => {
     const on = (e) => setGhost(e.detail && e.detail.date === date ? e.detail : null);
     window.addEventListener('elle:preview', on);
@@ -96,6 +99,39 @@ export default function DayView({ appts, isToday, date, policyHours = 10, bonus 
     if (j.paidSaved === false) alert('La cita se terminó, pero el cobro no se guardó: falta correr migration-15.sql en Supabase.');
   }
 
+  // Arrastrar con el mouse: mover la cita (de a 15 min) o estirar su final para cambiar la duración
+  const SNAP = 15, PXM = PX / 60;
+  const canDrag = (a) => a.status === 'confirmed' && !a.started_at;
+  const isLastOfGroup = (a) => !a.group_id || appts.filter((x) => x.group_id === a.group_id).every((x) => +new Date(x.starts_at) <= +new Date(a.starts_at));
+  function dragStart(e, a, mode) {
+    if (!canDrag(a) || e.button !== 0 || (e.pointerType !== 'mouse' && e.pointerType !== 'pen')) return;
+    if (mode === 'resize') e.stopPropagation();
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    dragRef.current = { id: a.id, mode, y0: e.clientY, moved: false, mins: 0 };
+  }
+  function dragMove(e, a) {
+    const d = dragRef.current;
+    if (!d || d.id !== a.id) return;
+    const dy = e.clientY - d.y0;
+    if (!d.moved && Math.abs(dy) < 6) return;
+    d.moved = true; d.mins = Math.round(dy / PXM / SNAP) * SNAP;
+    setDrag({ id: a.id, mode: d.mode, mins: d.mins });
+  }
+  async function dragEnd(a) {
+    const d = dragRef.current; dragRef.current = null;
+    if (!d || d.id !== a.id || !d.moved) return;
+    wasDrag.current = true; setTimeout(() => { wasDrag.current = false; }, 0); // el soltar no cuenta como un toque
+    setDrag(null);
+    if (!d.mins) return;
+    if (d.mode === 'move') {
+      const j = await call(a.id, 'move', { shift_min: d.mins });
+      if (j && !j.same) showUndo({ id: a.id, action: 'undo_move', extra: { prev: j.prev }, label: 'Cita movida. El aviso para el cliente quedó en Pendientes.' });
+    } else {
+      const j = await call(a.id, 'resize', { ends_at: new Date(+new Date(a.ends_at) + d.mins * 60000).toISOString() });
+      if (j) showUndo({ id: a.id, action: 'undo_move', extra: { prev: j.prev }, label: 'Duración cambiada.' });
+    }
+  }
+
   const hours = Array.from({ length: END - START }, (_, i) => START + i);
   const first = (n) => n.split(' ')[0];
 
@@ -111,21 +147,24 @@ export default function DayView({ appts, isToday, date, policyHours = 10, bonus 
         {isToday && nowMin >= START * 60 && nowMin < END * 60 && <div className="now" style={{ top: ((nowMin - START * 60) * PX) / 60 }} />}
         {items.map(({ a, s, e, col, cols }) => (
           <button key={a.id}
-            className={'blk' + (a.status === 'pending' ? ' pend' : a.status !== 'confirmed' ? ' done' : '') + (a.started_at && a.status === 'confirmed' ? ' live' : '') + (a.checked_in_at && !a.started_at ? ' here' : '') + (a.early || a.early_fee > 0 ? ' prio' : '') + (((e - s) * PX) / 60 - 5 < 56 ? ' short' : '')}
+            className={'blk' + (a.status === 'pending' ? ' pend' : a.status !== 'confirmed' ? ' done' : '') + (a.started_at && a.status === 'confirmed' ? ' live' : '') + (a.checked_in_at && !a.started_at ? ' here' : '') + (a.early || a.early_fee > 0 ? ' prio' : '') + (((e - s) * PX) / 60 - 5 < 56 ? ' short' : '') + (canDrag(a) ? ' canmove' : '') + (drag?.id === a.id ? ' dragging' : '')}
             style={{
-              top: ((s - START * 60) * PX) / 60 + 2, height: Math.max(((e - s) * PX) / 60 - 5, 30),
+              top: ((s - START * 60) * PX) / 60 + 2, height: Math.max(((e - s) * PX) / 60 - 5 + (drag?.id === a.id && drag.mode === 'resize' ? drag.mins * PXM : 0), 30),
+              ...(drag?.id === a.id && drag.mode === 'move' ? { transform: `translateY(${drag.mins * PXM}px)` } : {}),
               left: `calc(${(col / cols) * 100}% + 4px)`, width: `calc(${100 / cols}% - 6px)`, right: 'auto',
               ...(a.early || a.early_fee > 0 ? {} : { background: colorOf(a.services.service_categories?.name) }),
             }}
-            onClick={() => { setSel(a); setNote(a.notes || ''); }}>
-            <b>{a.guest_name || a.clients.full_name}{(a.early || a.early_fee > 0) && ' 🌅'}{a.change_starts_at && ' ⏳'}</b><span>{svcEmoji(a.services.name, a.services.service_categories?.name)} {a.services.name} · {hm(a.starts_at)}</span>
+            onPointerDown={(e) => dragStart(e, a, 'move')} onPointerMove={(e) => dragMove(e, a)} onPointerUp={() => dragEnd(a)} onPointerCancel={() => { dragRef.current = null; setDrag(null); }}
+            onClick={() => { if (wasDrag.current) return; setSel(a); setNote(a.notes || ''); }}>
+            <b>{a.guest_name || a.clients.full_name}{(a.early || a.early_fee > 0) && ' 🌅'}{a.change_starts_at && ' ⏳'}</b><span>{svcEmoji(a.services.name, a.services.service_categories?.name)} {a.services.name} · {drag?.id === a.id && drag.mode === 'move' ? <u>{hm(new Date(+new Date(a.starts_at) + drag.mins * 60000).toISOString())}</u> : drag?.id === a.id ? <u>{hm(a.starts_at)}–{hm(new Date(+new Date(a.ends_at) + drag.mins * 60000).toISOString())}</u> : hm(a.starts_at)}</span>
+            {canDrag(a) && isLastOfGroup(a) && <i className="rz" aria-hidden="true" onPointerDown={(e) => dragStart(e, a, 'resize')} />}
           </button>
         ))}
       </div>
       {appts.length === 0 && <p className="note">No hay citas este día.</p>}
 
       {undo && (
-        <div className="snack">Hecho
+        <div className="snack">{undo.label || 'Hecho'}
           <button onClick={async () => { if (await call(undo.id, undo.action, undo.extra)) setUndo(null); }}>Deshacer</button>
         </div>
       )}

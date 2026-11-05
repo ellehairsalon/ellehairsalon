@@ -14,7 +14,7 @@ const snap = (a) => ({
 
 export async function POST(req) {
   if (!(await isAdmin())) return bad('No autorizado', 401);
-  const { id, action, notes, prev, starts_at, amount, method } = await req.json();
+  const { id, action, notes, prev, starts_at, ends_at, shift_min, amount, method } = await req.json();
   if (!id) return bad('Datos inválidos', 400);
 
   // "Llegó" y "Empezar": se pueden usar aunque Elena ya esté atendiendo a otra clienta.
@@ -57,6 +57,38 @@ export async function POST(req) {
     return data || [];
   };
   const CLEAR = { change_starts_at: null, change_ends_at: null, change_stylist_id: null, change_early_fee: null, change_requested_at: null };
+
+  // Elena arrastró una cita en la agenda a otra hora (o estiró su duración). El cliente aún no lo sabe: queda un aviso en Pendientes.
+  if (action === 'move' || action === 'resize') {
+    const rows = (await groupOf(['confirmed'])).sort((x, y) => +new Date(x.starts_at) - +new Date(y.starts_at));
+    if (!rows.length) return bad('Esta cita ya no se puede mover.', 409);
+    const { data: st } = await db.from('appointments').select('started_at').in('id', rows.map((r) => r.id));
+    if ((st || []).some((x) => x.started_at)) return bad('Esa cita ya empezó; no se puede mover.', 409);
+    const NK = (await notifySupported()) ? { notify_kind: 'change_ok' } : {};
+    if (action === 'move') {
+      // shift_min: minutos que se corrió la cita; en reservas de varias personas se mueve el grupo completo
+      const target = Number.isFinite(+shift_min) && shift_min !== undefined ? +new Date(rows[0].starts_at) + Math.round(+shift_min) * 60000 : +new Date(starts_at);
+      if (Number.isNaN(target)) return bad('Hora inválida.', 400);
+      if (target === +new Date(rows[0].starts_at)) return Response.json({ ok: true, same: true });
+      const moved = await moveGroup(rows, new Date(target).toISOString(), rows[0].stylist_id, NK);
+      return moved.ok ? Response.json({ ok: true, prev: rows.map((r) => ({ id: r.id, starts_at: r.starts_at, ends_at: r.ends_at, early_fee: r.early_fee })) }) : bad('Ese horario ya está ocupado por otra cita.', 409);
+    }
+    // resize: solo cambia cuándo termina la última cita de la reserva
+    const last = rows[rows.length - 1];
+    const end = new Date(ends_at);
+    if (Number.isNaN(+end) || +end - +new Date(last.starts_at) < 15 * 60000 || +end - +new Date(last.starts_at) > 12 * 3600000) return bad('Duración inválida.', 400);
+    const { error } = await db.from('appointments').update({ ends_at: end.toISOString() }).eq('id', last.id);
+    return error ? bad('Ese horario ya está ocupado por otra cita.', 409) : Response.json({ ok: true, prev: [{ id: last.id, starts_at: last.starts_at, ends_at: last.ends_at, early_fee: last.early_fee }] });
+  }
+  // Deshacer un movimiento o cambio de duración
+  if (action === 'undo_move' && Array.isArray(prev)) {
+    for (const r of [...prev].sort((x, y) => +new Date(y.starts_at) - +new Date(x.starts_at))) {
+      const { error } = await db.from('appointments').update({ starts_at: r.starts_at, ends_at: r.ends_at, early_fee: r.early_fee }).eq('id', r.id);
+      if (error) return bad('No se pudo deshacer: el horario original ya está ocupado.', 409);
+    }
+    if (await notifySupported()) await db.from('appointments').update({ notify_kind: null }).in('id', prev.map((r) => r.id)).eq('notify_kind', 'change_ok');
+    return Response.json({ ok: true });
+  }
 
   // Un cliente pidió cambiar una cita ya confirmada: Elena acepta el cambio o lo deja como estaba.
   if (action === 'confirm_change' || action === 'reject_change') {

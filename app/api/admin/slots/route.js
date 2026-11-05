@@ -1,4 +1,4 @@
-import { db, getGroupSlots } from '@/lib/slots';
+import { db, getGroupSlots, nextFreeStart } from '@/lib/slots';
 import { isAdmin } from '@/lib/admin';
 
 const dayOf = (i) => new Date(Date.now() - 5 * 3600000 + i * 864e5).toISOString().slice(0, 10);
@@ -8,6 +8,10 @@ export async function GET(req) {
   const p = new URL(req.url).searchParams;
   const ids = (p.get('services') || p.get('service') || '').split(',').filter(Boolean);
   if (!ids.length) return Response.json({ slots: [], slot: null });
+  if (p.get('next')) { // primer hueco libre real desde ahora
+    const nf = await nextFreeStart(ids);
+    return Response.json({ next: nf ? { starts_at: nf.starts_at, minutes: nf.minutes } : null });
+  }
   if (p.get('check')) { // ¿qué citas chocan con esta hora? (para avisar antes de forzarla)
     const { items } = await getGroupSlots(p.get('date') || '2000-01-01', ids, [], 0);
     const total = (items || []).reduce((n, x) => n + (x?.duration_min || 0), 0);

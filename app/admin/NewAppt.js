@@ -13,6 +13,14 @@ const plus = (d, n) => new Date(+new Date(d + 'T12:00:00Z') + n * 864e5).toISOSt
 const iso = (date, time) => `${date}T${time}:00-05:00`;
 const toMin = (t) => { const [h, m] = t.split(':'); return +h * 60 + +m; };
 const dayName = (d) => cap(new Date(d + 'T12:00:00Z').toLocaleDateString('es-EC', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }));
+const whenLabel = (iso) => { // "hoy a las 11:25", "mañana a las 09:00", "el jueves 5 a las 09:00"
+  const d = new Date(+new Date(iso) - 5 * 3600000).toISOString().slice(0, 10);
+  const h = hm(iso);
+  if (d === today()) return `hoy a las ${h}`;
+  if (d === plus(today(), 1)) return `mañana a las ${h}`;
+  return `el ${new Date(d + 'T12:00:00Z').toLocaleDateString('es-EC', { weekday: 'long', day: 'numeric', timeZone: 'UTC' })} a las ${h}`;
+};
+const inMin = (m) => (m <= 5 ? 'ahora mismo' : m < 60 ? `en ${m} min` : `en ${dur(m)}`);
 const weeksAgo = (iso) => { const w = Math.round((Date.now() - +new Date(iso)) / (7 * 864e5)); return w < 1 ? 'esta semana' : w === 1 ? 'hace 1 semana' : `hace ${w} semanas`; };
 
 // Cualquier parte del panel puede abrir el agendador:  window.dispatchEvent(new CustomEvent('elle:new', { detail: { date, min, client, services } }))
@@ -20,7 +28,9 @@ export default function NewAppt({ policyHours = 10, bonus }) {
   const router = useRouter();
   const path = usePathname();
   const [open, setOpen] = useState(false);
-  const [mode, setMode] = useState('book'); // book | now (llegó sin cita)
+  const [mode, setMode] = useState('book'); // book | now (primer hueco libre: llegó sin cita o llamó)
+  const [here, setHere] = useState(true); // modo now: true = ya está en el salón, false = llamó y se le guarda turno
+  const [nextAt, setNextAt] = useState(undefined); // primer hueco libre: undefined = buscando, null = sin hueco
   const [svcs, setSvcs] = useState([]);
   const [cat, setCat] = useState('all');
   const [picked, setPicked] = useState([]);
@@ -55,13 +65,13 @@ export default function NewAppt({ policyHours = 10, bonus }) {
   const chosen = picked.map((id) => svcs.find((s) => s.id === id)).filter(Boolean);
   const total = chosen.reduce((n, s) => n + s.duration_min, 0);
   const digits = phone.replace(/\D/g, '');
-  const start = mode === 'now' ? null : slot || (custom && date ? iso(date, custom) : null);
+  const start = mode === 'now' ? nextAt?.starts_at || null : slot || (custom && date ? iso(date, custom) : null);
   const forced = !!start && slots && !slots.some((x) => +new Date(x.starts_at) === +new Date(start));
-  const ready = name.trim().length >= 2 && digits.length >= 9 && chosen.length > 0 && (mode === 'now' || !!start);
+  const ready = name.trim().length >= 2 && digits.length >= 9 && chosen.length > 0 && !!start;
 
   function reset() {
     setMade(null); setErr(''); setPicked([]); setName(''); setPhone(''); setClientId(null); setFound([]); setKnown(null); setLast(null);
-    setSlot(null); setCustom(''); setConflicts([]); setNotes(''); setCat('all'); setMode('book'); setDate(today()); want.current = null;
+    setSlot(null); setCustom(''); setConflicts([]); setNotes(''); setCat('all'); setMode('book'); setHere(true); setNextAt(undefined); setDate(today()); want.current = null;
   }
   function close() { setOpen(false); reset(); }
 
@@ -111,6 +121,16 @@ export default function NewAppt({ policyHours = 10, bonus }) {
     }).catch(() => alive && setSlots([]));
     return () => { alive = false; };
   }, [open, picked.join(','), date, mode]);
+
+  // Modo "llegó sin cita / llamó": el primer hueco libre real, que se refresca mientras el panel está abierto
+  useEffect(() => {
+    if (!open || mode !== 'now' || !picked.length) { setNextAt(undefined); return; }
+    let alive = true;
+    const load = () => fetch(`/api/admin/slots?services=${picked.join(',')}&next=1`).then((r) => r.json()).then((j) => alive && setNextAt(j.next || null)).catch(() => alive && setNextAt(null));
+    setNextAt(undefined); load();
+    const t = setInterval(load, 30000);
+    return () => { alive = false; clearInterval(t); };
+  }, [open, mode, picked.join(',')]);
 
   // Avisar si la hora forzada choca con otra cita
   useEffect(() => {
@@ -168,17 +188,17 @@ export default function NewAppt({ policyHours = 10, bonus }) {
     let r, j;
     try {
       r = await fetch('/api/admin/new', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(mode === 'now'
-        ? { items: picked, name, phone, start_now: true, notes } : { items: picked, name, phone, starts_at: new Date(start).toISOString(), force: forced, notes }) });
+        ? { items: picked, name, phone, next: true, present: here, notes } : { items: picked, name, phone, starts_at: new Date(start).toISOString(), force: forced, notes }) });
       j = await r.json();
     } catch { r = { ok: false }; j = { error: 'Sin conexión. Inténtalo otra vez.' }; }
     setBusy(false);
     if (!r.ok) { w?.close(); setErr(j.error || 'No se pudo guardar.'); return; }
     router.refresh();
     const a = j.appt;
-    const link = a && mode !== 'now' ? waLink(a.phone, confirmText({ clients: { full_name: a.client_name }, services: { name: a.service }, starts_at: a.starts_at, early_fee: a.early_fee, early: a.early, manage_token: a.manage_token },
+    const link = a && !(mode === 'now' && here) ? waLink(a.phone, confirmText({ clients: { full_name: a.client_name }, services: { name: a.service }, starts_at: a.starts_at, early_fee: a.early_fee, early: a.early, manage_token: a.manage_token },
       window.location.origin, policyHours, a.items.length > 1 ? a.items.map((x) => ({ clients: { full_name: a.client_name }, services: { name: x.service }, starts_at: x.starts_at })) : undefined, bonus)) : null;
     if (w && link) w.location.href = link; else w?.close();
-    setMade({ a, link, now: mode === 'now', sent: !!(w && link) });
+    setMade({ a, link, now: mode === 'now', here, sent: !!(w && link) });
     window.dispatchEvent(new CustomEvent('elle:preview', { detail: null }));
   }
 
@@ -199,8 +219,8 @@ export default function NewAppt({ policyHours = 10, bonus }) {
       {open && (
         <aside className="nd" role="dialog" aria-label="Nueva cita" onKeyDown={onEnter}>
           <header className="nd-head">
-            <div><b>{made ? (made.now ? 'Ya está en atención' : 'Cita agendada') : mode === 'now' ? 'Llegó sin cita' : 'Nueva cita'}</b>
-              {!made && <small className="kb">{mode === 'now' ? 'Empieza ahora mismo' : 'Pulsa Esc para cerrar'}</small>}</div>
+            <div><b>{made ? (made.now ? (made.here ? 'En espera' : 'Turno guardado') : 'Cita agendada') : mode === 'now' ? 'Llegó sin cita' : 'Nueva cita'}</b>
+              {!made && <small className="kb">{mode === 'now' ? 'Se le asigna el primer hueco libre' : 'Pulsa Esc para cerrar'}</small>}</div>
             <button className="nd-x" onClick={close} aria-label="Cerrar">✕</button>
           </header>
 
@@ -208,7 +228,9 @@ export default function NewAppt({ policyHours = 10, bonus }) {
             <div className="nd-body nd-done">
               <div className="na-check">✓</div>
               <b>{name.trim()}</b>
-              <span>{made.a?.service}{!made.now && made.a && <><br />{cap(new Date(made.a.starts_at).toLocaleString('es-EC', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: TZ }))}</>}</span>
+              <span>{made.a?.service}{made.a && <><br />{cap(new Date(made.a.starts_at).toLocaleString('es-EC', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: TZ }))}</>}</span>
+              {made.now && made.here && <p className="nd-tell">Queda <b>en espera</b>. Lo atienden {inMin(made.a?.minutes ?? 0)}. Cuando le toque, usa “Empezar” en su cita.</p>}
+              {made.now && !made.here && <p className="nd-tell">Dile al cliente: <b>{made.a && whenLabel(made.a.starts_at)}</b>. El turno ya está guardado.</p>}
               {made.sent && <p className="note">Se abrió WhatsApp con la confirmación en otra pestaña.</p>}
               {made.link && !made.sent && <a className="btn wa full" target="_blank" rel="noopener noreferrer" href={made.link}>💬 Enviar confirmación por WhatsApp</a>}
               <button className="btn soft full" onClick={close}>Listo</button>
@@ -256,6 +278,27 @@ export default function NewAppt({ policyHours = 10, bonus }) {
                 </div>
               </section>
 
+              {mode === 'now' && (
+                <section className="nd-sec">
+                  <h3>3 · Primer turno libre</h3>
+                  <div className="nd-modes sub" role="tablist">
+                    <button className={here ? 'on' : ''} onClick={() => setHere(true)}>🧍 Está aquí</button>
+                    <button className={!here ? 'on' : ''} onClick={() => setHere(false)}>📞 Llamó, guardar turno</button>
+                  </div>
+                  {!picked.length && <p className="note">Elige un servicio para ver cuándo hay hueco.</p>}
+                  {picked.length > 0 && nextAt === undefined && <p className="note">Buscando el primer hueco…</p>}
+                  {picked.length > 0 && nextAt === null && <p className="nd-warn">No hay hueco libre en los próximos días para estos servicios.</p>}
+                  {nextAt && (
+                    <div className="nd-next">
+                      <small>{here ? 'Queda en espera hasta' : 'Se le guarda el turno'}</small>
+                      <b>{cap(whenLabel(nextAt.starts_at))}</b>
+                      <span>{inMin(nextAt.minutes)} · {dur(total)} de servicio</span>
+                    </div>
+                  )}
+                  <p className="note">{here ? 'Aparece en “En espera” en la pantalla del salón. Elena decide cuándo empezar desde la agenda.' : 'No se marca como llegado; sirve para decirle a qué hora venir.'} Para otra hora, usa “Agendar”.</p>
+                </section>
+              )}
+
               {mode === 'book' && (
                 <section className="nd-sec">
                   <h3>3 · Día y hora</h3>
@@ -292,12 +335,15 @@ export default function NewAppt({ policyHours = 10, bonus }) {
 
             <footer className="nd-foot">
               {mode === 'now'
-                ? <button className="btn primary full" disabled={!ready || busy} onClick={() => save(false)}>{busy ? 'Guardando…' : 'Empezar ahora'}</button>
+                ? (<>
+                  <button className="btn primary" disabled={!ready || busy} onClick={() => save(false)}>{busy ? 'Guardando…' : here ? 'Poner en espera' : 'Guardar turno'}</button>
+                  {!here && <button className="btn wa" disabled={!ready || busy} onClick={() => save(true)}>Guardar + WhatsApp</button>}
+                </>)
                 : (<>
                   <button className="btn primary" disabled={!ready || busy} onClick={() => save(false)}>{busy ? 'Guardando…' : forced ? 'Agendar igual' : 'Agendar'}</button>
                   <button className="btn wa" disabled={!ready || busy} onClick={() => save(true)}>Agendar + WhatsApp</button>
                 </>)}
-              <small>{ready ? (mode === 'book' && start ? `${cap(new Date(start).toLocaleString('es-EC', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: TZ }))} · ${dur(total)}` : dur(total)) : 'Completa cliente, servicio y hora'}<span className="kb"> · Enter para guardar</span></small>
+              <small>{ready ? (start ? `${cap(new Date(start).toLocaleString('es-EC', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: TZ }))} · ${dur(total)}` : dur(total)) : mode === 'now' ? 'Completa cliente y servicio' : 'Completa cliente, servicio y hora'}<span className="kb"> · Enter para guardar</span></small>
             </footer>
           </>)}
         </aside>

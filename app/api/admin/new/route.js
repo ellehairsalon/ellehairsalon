@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { db, getGroupSlots, earlyFeeFor } from '@/lib/slots';
+import { db, getGroupSlots, earlyFeeFor, nextFreeStart } from '@/lib/slots';
 import { isAdmin } from '@/lib/admin';
 import { normPhone } from '@/lib/validate';
 
@@ -33,7 +33,8 @@ async function pickStylist(ids, startIso, endIso) {
 export async function POST(req) {
   if (!(await isAdmin())) return bad('No autorizado', 401);
   const body = await req.json();
-  const { starts_at, name, phone, walk_in, start_now, force } = body;
+  const { starts_at, name, phone, force } = body;
+  const next = !!body.next, present = !!body.present; // next: primer hueco libre real; present: el cliente ya está en el salón
   const notes = String(body.notes || '').trim().slice(0, 500) || null;
   const p = normPhone(phone), n = String(name || '').trim().slice(0, 100);
   if (!p || n.length < 2) return bad('Revisa el nombre y el WhatsApp.', 400);
@@ -48,12 +49,10 @@ export async function POST(req) {
 
   // Hora de inicio y estilista
   let start, stylist_id, overlap = false;
-  if (start_now) {
-    const now = new Date(); now.setSeconds(0, 0);
-    start = now.toISOString();
-    const pick = await pickStylist([...new Set(ids)], start, new Date(+now + total * 60000).toISOString());
-    if (!pick) return bad('Ninguna estilista activa ofrece estos servicios.', 400);
-    ({ id: stylist_id, overlap } = pick);
+  if (next) { // primer hueco libre (puede ser ahora mismo): el sistema decide, Elena solo confirma
+    const nf = await nextFreeStart(ids);
+    if (!nf) return bad('No hay hueco libre en los próximos días para estos servicios.', 409);
+    start = nf.starts_at; stylist_id = nf.stylist_id;
   } else {
     if (!/^\d{4}-\d{2}-\d{2}T/.test(starts_at || '')) return bad('Elige día y hora.', 400);
     start = new Date(starts_at).toISOString();
@@ -78,9 +77,9 @@ export async function POST(req) {
     const s = new Date(cursor).toISOString(), e = new Date(cursor + sv.duration_min * 60000).toISOString();
     rows.push({
       client_id: client.id, stylist_id, service_id: sv.id, starts_at: s, ends_at: e, price: sv.price,
-      early_fee: await earlyFeeFor(s, +sv.price), source: start_now || walk_in ? 'walk_in' : 'manual', notes: i === 0 ? notes : null,
+      early_fee: await earlyFeeFor(s, +sv.price), source: next ? 'walk_in' : 'manual', notes: i === 0 ? notes : null,
       group_id, guest_name: i === 0 ? null : n, overlap_ok: overlap,
-      ...(start_now && i === 0 ? { checked_in_at: s, started_at: s } : walk_in && i === 0 ? { checked_in_at: new Date().toISOString() } : {}),
+      ...(present && i === 0 ? { checked_in_at: new Date().toISOString() } : {}), // ya llegó: queda "En espera" hasta que Elena toque Empezar
     });
     cursor += sv.duration_min * 60000;
   }
@@ -90,7 +89,7 @@ export async function POST(req) {
   const early_fee = rows.reduce((s, r) => s + +r.early_fee, 0);
   return Response.json({ ok: true, appt: {
     manage_token: made?.[0]?.manage_token, starts_at: rows[0].starts_at, early: early_fee > 0, early_fee,
-    service: svcs.map((x) => x.name).join(' + '), client_name: n, phone: p,
+    service: svcs.map((x) => x.name).join(' + '), client_name: n, phone: p, minutes: Math.max(0, Math.round((+new Date(start) - Date.now()) / 60000)), present,
     items: rows.map((r, i) => ({ service: svcs[i].name, starts_at: r.starts_at })),
   } });
 }
