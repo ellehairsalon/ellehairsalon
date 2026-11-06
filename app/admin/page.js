@@ -26,8 +26,10 @@ export default async function Admin({ searchParams }) {
     db.from('salon_settings').select('reschedule_min_hours,early_bonus').eq('id', 1).single(),
   ]);
   const hours = cfg?.reschedule_min_hours ?? 10;
-  const { data: bh } = await db.from('business_hours').select('open_time').eq('weekday', new Date(date + 'T12:00:00Z').getUTCDay()).maybeSingle();
+  const { data: bh } = await db.from('business_hours').select('*').eq('weekday', new Date(date + 'T12:00:00Z').getUTCDay()).maybeSingle();
   const openMin = bh?.open_time ? +bh.open_time.slice(0, 2) * 60 + +bh.open_time.slice(3, 5) : 0;
+  const tm = (t) => (t ? +t.slice(0, 2) * 60 + +t.slice(3, 5) : null);
+  const lunch = bh?.is_open !== false && tm(bh?.lunch_start) != null && tm(bh?.lunch_end) > tm(bh?.lunch_start) ? { s: tm(bh.lunch_start), e: tm(bh.lunch_end) } : null;
   const appts = (data || []).map((a) => {
     const w = new Date(+new Date(a.starts_at) - 5 * 3600000);
     return { ...a, early: !!openMin && w.getUTCHours() * 60 + w.getUTCMinutes() < openMin };
@@ -50,7 +52,7 @@ export default async function Admin({ searchParams }) {
       <p className="sub-note">{(data || []).filter((x) => x.status !== 'pending').length} {(data || []).filter((x) => x.status !== 'pending').length === 1 ? 'cita' : 'citas'}{(data || []).some((x) => x.status === 'pending') && ` · ${(data || []).filter((x) => x.status === 'pending').length} por confirmar`}</p>
       {paidTotal > 0 && <p className="paid-sum">💵 Cobrado este día: <b>${paidTotal.toFixed(2).replace(/\.00$/, '')}</b>{Object.entries(byMethod).map(([k, v]) => <span key={k}>{METHOD_NAME[k] || k} ${v.toFixed(2).replace(/\.00$/, '')}</span>)}</p>}
       {bdays?.length > 0 && <p className="bday">🎂 Cumpleaños: {bdays.map((b) => b.full_name).join(', ')}</p>}
-      <DayView appts={appts} date={date} isToday={date === today()} policyHours={hours} bonus={cfg?.early_bonus} />
+      <DayView lunch={lunch} appts={appts} date={date} isToday={date === today()} policyHours={hours} bonus={cfg?.early_bonus} />
     </main>
   );
 }

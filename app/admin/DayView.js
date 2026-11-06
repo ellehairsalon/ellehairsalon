@@ -30,7 +30,7 @@ function layout(appts) {
   return out;
 }
 
-export default function DayView({ appts, isToday, date, policyHours = 10, bonus }) {
+export default function DayView({ appts, isToday, date, policyHours = 10, bonus, lunch }) {
   const router = useRouter();
   const [sel, setSel] = useState(null);
   const [note, setNote] = useState('');
@@ -143,6 +143,7 @@ export default function DayView({ appts, isToday, date, policyHours = 10, bonus 
         onClick={(e) => { if (e.target.closest('.blk')) return; const y = e.clientY - e.currentTarget.getBoundingClientRect().top; const m = Math.floor(((y / PX) * 60 + START * 60) / 30) * 30; window.dispatchEvent(new CustomEvent('elle:new', { detail: { date, min: m } })); }}>
         {hover !== null && !ghost && <div className="tl-hover" style={{ top: ((hover - START * 60) * PX) / 60, height: PX / 2 }}><span>＋ Agendar {String(Math.floor(hover / 60)).padStart(2, '0')}:{String(hover % 60).padStart(2, '0')}</span></div>}
         {ghost && <div className="blk ghost" style={{ top: ((ghost.s - START * 60) * PX) / 60 + 2, height: Math.max(((ghost.e - ghost.s) * PX) / 60 - 5, 30), left: '4px', width: 'calc(100% - 6px)', right: 'auto' }}><b>{ghost.label}</b><span>{String(Math.floor(ghost.s / 60)).padStart(2, '0')}:{String(ghost.s % 60).padStart(2, '0')} · nueva cita</span></div>}
+        {lunch && lunch.e > START * 60 && lunch.s < END * 60 && <div className="lunch" style={{ top: ((Math.max(lunch.s, START * 60) - START * 60) * PX) / 60, height: ((Math.min(lunch.e, END * 60) - Math.max(lunch.s, START * 60)) * PX) / 60 }}><span>🍽️ Almuerzo</span></div>}
         {hours.map((h) => <div key={h} className="hr" style={{ top: (h - START) * PX }}><span>{h}:00</span></div>)}
         {isToday && nowMin >= START * 60 && nowMin < END * 60 && <div className="now" style={{ top: ((nowMin - START * 60) * PX) / 60 }} />}
         {items.map(({ a, s, e, col, cols }) => (

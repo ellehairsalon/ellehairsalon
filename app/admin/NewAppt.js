@@ -320,7 +320,7 @@ export default function NewAppt({ policyHours = 10, bonus }) {
                   {forced && (
                     <div className="nd-warn">
                       <b>Esta hora no está entre los horarios libres.</b> Se agendará igual si lo confirmas.
-                      {conflicts.map((c, i) => <div key={i}>⚠ Choca con {c.name} ({hm(c.starts_at)}–{hm(c.ends_at)})</div>)}
+                      {conflicts.map((c, i) => <div key={i}>⚠ {c.lunch ? `Cae en el almuerzo (${hm(c.starts_at)}–${hm(c.ends_at)})` : `Choca con ${c.name} (${hm(c.starts_at)}–${hm(c.ends_at)})`}</div>)}
                     </div>
                   )}
                 </section>

@@ -709,7 +709,7 @@ body[data-step="2"] main, body[data-step="3"] main, body[data-step="4"] main { p
 .inv-step button:disabled { opacity:.35; cursor:default; }
 .inv-step span { min-width:54px; display:flex; flex-direction:column; align-items:center; line-height:1.1; font-variant-numeric:tabular-nums; }
 .inv-step span b { font-size:1.25rem; font-weight:600; }
-.inv-step span small { font-size:.6875rem; color:var(--muted); max-width:58px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.inv-step span small { font-family:'Albert Sans Variable',system-ui,sans-serif; font-size:.8125rem; font-weight:500; letter-spacing:.01em; margin-top:3px; color:var(--muted); max-width:none; white-space:nowrap; }
 .inv-empty { text-align:center; padding:48px 12px; color:var(--muted); }
 .inv-empty div { font-size:3rem; }
 .inv-empty b { display:block; color:var(--ink); font-size:1.125rem; margin:8px 0 4px; }
@@ -835,7 +835,7 @@ button, input, select, textarea { font-family:inherit; }
 .inv-step.big button { width:64px; height:64px; font-size:2rem; }
 .inv-step.big span { min-width:92px; }
 .inv-step.big span b { font-size:2.5rem; }
-.inv-step.big span small { font-size:.875rem; max-width:none; }
+.inv-step.big span small { font-size:1rem; font-weight:500; margin-top:4px; }
 .inv-sheet-top { display:flex; align-items:center; gap:14px; padding-right:44px; }
 .inv-sheet-top h2 { margin:0; padding:0; font-size:2rem; }
 .inv-sheet-top .inv-lvl { width:52px; height:52px; font-size:1.25rem; }
@@ -953,3 +953,7 @@ button, input, select, textarea { font-family:inherit; }
   .wide{max-width:1180px}
   .inv-list{grid-template-columns:repeat(3,minmax(0,1fr))}
 }
+
+/* Almuerzo en la agenda */
+.tl .lunch { position:absolute; left:0; right:0; z-index:0; pointer-events:none; background:repeating-linear-gradient(135deg, rgba(176,90,54,.07) 0 8px, rgba(176,90,54,.03) 8px 16px); border-top:1px dashed rgba(176,90,54,.35); border-bottom:1px dashed rgba(176,90,54,.35); display:flex; align-items:center; justify-content:flex-end; padding-right:12px; }
+.tl .lunch span { font-size:.8125rem; font-weight:600; color:var(--berry); opacity:.8; }

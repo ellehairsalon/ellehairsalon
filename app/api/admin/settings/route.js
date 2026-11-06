@@ -28,9 +28,10 @@ export async function POST(req) {
     q = db.from('salon_settings').update({ approval_mode: b.approval_mode, online_lead_hours: h }).eq('id', 1);
   } else if (b.kind === 'hours') {
     if (!(b.weekday >= 0 && b.weekday <= 6) || !T.test(b.open_time) || !T.test(b.close_time) || (b.early_open_time && !T.test(b.early_open_time))) return bad();
-    q = db.from('business_hours').update({
-      is_open: !!b.is_open, open_time: b.open_time, close_time: b.close_time, early_open_time: b.early_open_time || null,
-    }).eq('weekday', b.weekday);
+    if ((b.lunch_start && !T.test(b.lunch_start)) || (b.lunch_end && !T.test(b.lunch_end))) return bad();
+    const patch = { is_open: !!b.is_open, open_time: b.open_time, close_time: b.close_time, early_open_time: b.early_open_time || null };
+    if ('lunch_start' in b) { patch.lunch_start = b.lunch_start && b.lunch_end ? b.lunch_start : null; patch.lunch_end = b.lunch_start && b.lunch_end ? b.lunch_end : null; }
+    q = db.from('business_hours').update(patch).eq('weekday', b.weekday);
   } else return bad();
   const { error } = await q;
   return error ? Response.json({ error: 'No se pudo guardar' }, { status: 500 }) : Response.json({ ok: true });
