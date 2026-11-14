@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { WHATSAPP } from '@/lib/config';
 import { PRIORITY_NAME, DEFAULT_BONUS, money, feeTag, priceLabel } from '@/lib/priority';
 import { svcEmoji } from '@/lib/emoji';
+import { sections } from '@/lib/menu';
 
 const TZ = 'America/Guayaquil';
 const todayStr = () => new Date(Date.now() - 5 * 3600000).toISOString().slice(0, 10);
@@ -15,21 +16,6 @@ const monthOf = (d) => new Date(d + 'T12:00:00Z').toLocaleDateString('es-EC', { 
 const cap1 = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 const dur = (m) => (m >= 60 ? `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ''}` : `${m} min`);
 const durL = (s) => `${s.approx ? 'aprox. ' : ''}${dur(s.duration_min)}`;
-
-// Agrupa los servicios de una categoría: subtítulo (Mujer / Hombre…) → tarjetas (un servicio con varias opciones = una tarjeta).
-function sections(list) {
-  const out = [];
-  list.forEach((s) => {
-    const sub = s.subgroup || '';
-    let sec = out.find((x) => x.sub === sub);
-    if (!sec) { sec = { sub, cards: [] }; out.push(sec); }
-    const key = s.group_name || s.name;
-    let card = sec.cards.find((c) => c.key === key);
-    if (!card) { card = { key, items: [] }; sec.cards.push(card); }
-    card.items.push(s);
-  });
-  return out;
-}
 
 const deadlineText = (iso, hours) => new Date(+new Date(iso) - hours * 3600000).toLocaleString('es-EC', {
   weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: TZ,

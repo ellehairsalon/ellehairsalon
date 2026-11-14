@@ -2,6 +2,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { svcEmoji } from '@/lib/emoji';
+import { sections } from '@/lib/menu';
 import { waLink, confirmText } from '@/lib/wa';
 
 const TZ = 'America/Guayaquil';
@@ -179,6 +180,7 @@ export default function NewAppt({ policyHours = 10, bonus }) {
 
   function pickClient(c) { setName(c.full_name); setPhone(c.phone); setClientId(c.id); setKnown(c); setFound([]); }
   function unpick() { setClientId(null); setKnown(null); setLast(null); setName(''); setPhone(''); setTimeout(() => nameRef.current?.focus(), 30); }
+  function toggleVariant(items, id) { setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p.filter((x) => !items.some((v) => v.id === x)), id].slice(0, 6))); }
   function toggle(id) { setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : p.length >= 6 ? p : [...p, id])); }
 
   async function save(sendWa) {
@@ -269,11 +271,44 @@ export default function NewAppt({ policyHours = 10, bonus }) {
                   ))}
                 </div>
                 {!svcs.length && <p className="note">Cargando…</p>}
-                <div className="nd-svcs">
-                  {shown.map(({ s, cn }) => (
-                    <button key={s.id} className={'nd-svc' + (picked.includes(s.id) ? ' on' : '')} onClick={() => toggle(s.id)} aria-pressed={picked.includes(s.id)}>
-                      <span aria-hidden="true">{svcEmoji(s.name, cn)}</span><b>{s.name}</b><small>{dur(s.duration_min)}</small>{picked.includes(s.id) && <i>✓</i>}
-                    </button>
+                <div className="nd-menu">
+                  {(cat === 'all' ? cats : cats.filter((c) => c.name === cat)).map((c) => (
+                    <div key={c.name} className="nd-cat">
+                      {cat === 'all' && <h4 className="nd-cath">{c.name}</h4>}
+                      {sections(c.items).map((sec) => (
+                        <div key={sec.sub}>
+                          {sec.sub && <h5 className="nd-subh">{sec.sub}</h5>}
+                          {sec.cards.map((card) => {
+                            const emo = svcEmoji(card.items[0].name, c.name);
+                            if (card.items.length === 1) {
+                              const s = card.items[0], on = picked.includes(s.id);
+                              return (
+                                <button key={card.key} className={'nd-row' + (on ? ' on' : '')} onClick={() => toggle(s.id)} aria-pressed={on}>
+                                  <span className="nd-emo" aria-hidden="true">{emo}</span>
+                                  <span className="nd-t"><b>{card.key}</b>{s.variant_label && <small>{s.variant_label}</small>}</span>
+                                  <span className="nd-d">{s.approx ? '~' : ''}{dur(s.duration_min)}</span>
+                                  <i className="nd-ck" aria-hidden="true">{on ? '✓' : ''}</i>
+                                </button>
+                              );
+                            }
+                            const sel = card.items.find((x) => picked.includes(x.id));
+                            return (
+                              <div key={card.key} className={'nd-row multi' + (sel ? ' on' : '')} role="group" aria-label={card.key}>
+                                <span className="nd-emo" aria-hidden="true">{emo}</span>
+                                <span className="nd-t"><b>{card.key}</b></span>
+                                <span className="nd-opts">
+                                  {card.items.map((s) => (
+                                    <button key={s.id} className={'nd-opt' + (picked.includes(s.id) ? ' on' : '')} aria-pressed={picked.includes(s.id)} onClick={() => toggleVariant(card.items, s.id)}>
+                                      {s.variant_label}<small>{s.approx ? '~' : ''}{dur(s.duration_min)}</small>
+                                    </button>
+                                  ))}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </div>
                   ))}
                 </div>
               </section>
