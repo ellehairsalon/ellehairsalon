@@ -972,3 +972,23 @@ button, input, select, textarea { font-family:inherit; }
 .vchip:active { transform:scale(.97); }
 .vchip.on { background:var(--berry); border-color:var(--berry); color:#fff; }
 .vchip.on small { color:rgba(255,255,255,.85); }
+
+/* Menú: filas más compactas, opciones en una sola línea, categorías fijas y botón que aparece al elegir */
+.svc-cards { padding-bottom:24px; }
+.svc-cards.has-cta { padding-bottom:96px; }
+.svc-card { padding:11px 14px; gap:12px; border-radius:18px; }
+.svc-card .svc-emo { width:38px; height:38px; border-radius:13px; font-size:1.25rem; }
+.svc-card .radio { width:24px; height:24px; }
+.svc-card .svc-main b { font-size:1rem; }
+.svc-card .svc-main small { font-size:.8125rem; }
+.svc-card.multi { align-items:center; }
+.svc-card.multi .svc-emo, .svc-card.multi .radio { margin-top:0; align-self:flex-start; }
+.vchips { display:flex; flex-wrap:nowrap; gap:6px; margin-top:8px; }
+.vchip { flex:1 1 0; min-width:0; padding:7px 4px; border-radius:14px; font-size:.875rem; line-height:1.2; text-align:center; }
+.vchip small { font-size:.75rem; white-space:nowrap; }
+.svc-cat { margin:14px 2px 6px; }
+.svc-sub { margin:10px 2px 6px; }
+.svc-sec .svc-card + .svc-card { margin-top:8px; }
+.step-pills, section > .pills { position:sticky; top:0; z-index:6; background:var(--bg); margin-top:6px; padding-top:8px; padding-bottom:8px; box-shadow:0 8px 10px -10px rgba(42,43,47,.25); }
+.svc-cta .cta { display:flex; flex-direction:column; align-items:center; gap:1px; padding:12px 24px; }
+.svc-cta .cta small { font-size:.8125rem; font-weight:400; opacity:.9; }

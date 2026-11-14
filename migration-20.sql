@@ -18,7 +18,7 @@ update service_categories set sort_order = case lower(name)
   when 'peinados' then 5 when 'maquillaje y manos' then 6 else sort_order end;
 
 do $$
-declare r record; sid bigint; cid bigint;
+declare r record; sid uuid; cid uuid;
 begin
   drop table if exists _menu;
   create temp table _menu (cat text, old_name text, name text, grp text, variant text, sub text, mins int, ord int, approx boolean, cross_l boolean);

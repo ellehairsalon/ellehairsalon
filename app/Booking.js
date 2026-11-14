@@ -228,7 +228,7 @@ export default function Booking({ showPrices = false, categories, review = true,
               <button key={c.id} role="tab" aria-selected={cat === c.id} className={`pill${cat === c.id ? ' on' : ''}`} onClick={() => { setCat(c.id); const list = c.id === 'all' ? categories.flatMap((x) => x.services) : c.services; if (pick && !list.some((x) => x.id === pick.id)) setPick(null); }}>{c.name}</button>
             ))}
           </div>
-          <div className="svc-cards" key={cat}>
+          <div className={'svc-cards' + (pick ? ' has-cta' : '')} key={cat}>
             {(cat === 'all' ? categories : categories.filter((c) => c.id === cat)).map((c) => (
               <div key={c.id} className="svc-block">
                 {cat === 'all' && <h3 className="svc-cat">{c.name}</h3>}
@@ -257,7 +257,7 @@ export default function Booking({ showPrices = false, categories, review = true,
                           <span className="svc-emo" aria-hidden="true">{emo}</span>
                           <span className="svc-main">
                             <b>{card.key}</b>
-                            <small>{on ? `${on.variant_label} · ${durL(on)}${price(on)}` : 'Elige una opción'}</small>
+                            {on && <small>{`${on.variant_label} · ${durL(on)}${price(on)}`}</small>}
                             <span className="vchips">
                               {card.items.map((s) => (
                                 <button key={s.id} role="radio" aria-checked={pick?.id === s.id} className={'vchip' + (pick?.id === s.id ? ' on' : '')} onClick={() => { setPick(s); setError(''); }}>
@@ -276,7 +276,12 @@ export default function Booking({ showPrices = false, categories, review = true,
             ))}
           </div>
           {error && <p className="error">{error}</p>}
-          <div className="svc-cta"><button className="cta" disabled={!pick} onClick={() => pick && pickService(pick)}>Elegir horario</button></div>
+          {pick && (
+            <div className="svc-cta"><button className="cta" onClick={() => pickService(pick)}>
+              <span>Elegir horario</span>
+              <small>{pick.group_name && pick.variant_label ? `${pick.group_name} · ${pick.variant_label}` : (pick.group_name || pick.name)} · {durL(pick)}</small>
+            </button></div>
+          )}
         </section>
       )}
 
