@@ -22,7 +22,7 @@ export default async function Page({ searchParams }) {
   const sp = (await searchParams) || {};
   const showPrices = sp.precios === '1';
   const { data } = await db.from('service_categories')
-    .select('id,name,services(id,name,duration_min,price,price_from,is_active,sort_order)').order('sort_order');
+    .select('id,name,services(*)').order('sort_order');
   const { data: cfg } = await db.from('salon_settings').select('approval_mode,online_lead_hours,reschedule_min_hours,early_fee_type,early_fee_value,early_bonus').eq('id', 1).single();
   const categories = (data || [])
     .map((c) => ({ ...c, services: c.services.filter((s) => s.is_active).sort((a, b) => a.sort_order - b.sort_order) }))

@@ -957,3 +957,18 @@ button, input, select, textarea { font-family:inherit; }
 /* Almuerzo en la agenda */
 .tl .lunch { position:absolute; left:0; right:0; z-index:0; pointer-events:none; background:repeating-linear-gradient(135deg, rgba(176,90,54,.07) 0 8px, rgba(176,90,54,.03) 8px 16px); border-top:1px dashed rgba(176,90,54,.35); border-bottom:1px dashed rgba(176,90,54,.35); display:flex; align-items:center; justify-content:flex-end; padding-right:12px; }
 .tl .lunch span { font-size:.8125rem; font-weight:600; color:var(--berry); opacity:.8; }
+
+/* Menú por categorías con variantes */
+.svc-block + .svc-block { margin-top:10px; }
+.svc-cat { margin:18px 2px 8px; font-size:1.0625rem; }
+.svc-sub { margin:14px 2px 8px; font-family:'Albert Sans Variable',system-ui,sans-serif; font-size:.8125rem; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--berry); }
+.svc-sec .svc-card + .svc-card { margin-top:10px; }
+.svc-card.multi { cursor:default; align-items:flex-start; flex-wrap:nowrap; }
+.svc-card.multi .svc-emo { margin-top:2px; }
+.svc-card.multi .radio { margin-top:4px; }
+.vchips { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+.vchip { display:flex; flex-direction:column; align-items:center; gap:1px; min-width:76px; padding:8px 14px; border-radius:16px; border:1px solid var(--line); background:var(--bg); color:var(--ink); font:inherit; font-size:.9375rem; font-weight:500; cursor:pointer; transition:background .2s, border-color .2s, transform .1s; }
+.vchip small { font-size:.8125rem; color:var(--muted); font-variant-numeric:tabular-nums; }
+.vchip:active { transform:scale(.97); }
+.vchip.on { background:var(--berry); border-color:var(--berry); color:#fff; }
+.vchip.on small { color:rgba(255,255,255,.85); }

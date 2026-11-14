@@ -14,6 +14,23 @@ const dayNum = (d) => +d.slice(8, 10);
 const monthOf = (d) => new Date(d + 'T12:00:00Z').toLocaleDateString('es-EC', { month: 'long', timeZone: 'UTC' });
 const cap1 = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 const dur = (m) => (m >= 60 ? `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ''}` : `${m} min`);
+const durL = (s) => `${s.approx ? 'aprox. ' : ''}${dur(s.duration_min)}`;
+
+// Agrupa los servicios de una categoría: subtítulo (Mujer / Hombre…) → tarjetas (un servicio con varias opciones = una tarjeta).
+function sections(list) {
+  const out = [];
+  list.forEach((s) => {
+    const sub = s.subgroup || '';
+    let sec = out.find((x) => x.sub === sub);
+    if (!sec) { sec = { sub, cards: [] }; out.push(sec); }
+    const key = s.group_name || s.name;
+    let card = sec.cards.find((c) => c.key === key);
+    if (!card) { card = { key, items: [] }; sec.cards.push(card); }
+    card.items.push(s);
+  });
+  return out;
+}
+
 const deadlineText = (iso, hours) => new Date(+new Date(iso) - hours * 3600000).toLocaleString('es-EC', {
   weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: TZ,
 });
@@ -212,15 +229,50 @@ export default function Booking({ showPrices = false, categories, review = true,
             ))}
           </div>
           <div className="svc-cards" key={cat}>
-            {shown.map((s) => (
-              <button key={s.id} className={`svc-card${pick?.id === s.id ? ' on' : ''}`} role="radio" aria-checked={pick?.id === s.id} onClick={() => { setPick(s); setError(''); }}>
-                <span className="svc-emo" aria-hidden="true">{svcEmoji(s.name, categories.find((c) => c.services.some((y) => y.id === s.id))?.name)}</span>
-                <span className="svc-main">
-                  <b>{s.name}</b>
-                  <small>{dur(s.duration_min)}{showPrices && priceLabel(s.price, s.price_from) ? ` · ${s.price_from ? 'desde ' : ''}${money(s.price)}` : ''}</small>
-                </span>
-                <i className="radio" aria-hidden="true">{pick?.id === s.id ? '✓' : ''}</i>
-              </button>
+            {(cat === 'all' ? categories : categories.filter((c) => c.id === cat)).map((c) => (
+              <div key={c.id} className="svc-block">
+                {cat === 'all' && <h3 className="svc-cat">{c.name}</h3>}
+                {sections(c.services).map((sec) => (
+                  <div key={sec.sub} className="svc-sec">
+                    {sec.sub && <h4 className="svc-sub">{sec.sub}</h4>}
+                    {sec.cards.map((card) => {
+                      const emo = svcEmoji(card.items[0].name, c.name);
+                      const price = (s) => (showPrices && priceLabel(s.price, s.price_from) ? ` · ${s.price_from ? 'desde ' : ''}${money(s.price)}` : '');
+                      if (card.items.length === 1) {
+                        const s = card.items[0];
+                        return (
+                          <button key={card.key} className={`svc-card${pick?.id === s.id ? ' on' : ''}`} role="radio" aria-checked={pick?.id === s.id} onClick={() => { setPick(s); setError(''); }}>
+                            <span className="svc-emo" aria-hidden="true">{emo}</span>
+                            <span className="svc-main">
+                              <b>{card.key}</b>
+                              <small>{s.variant_label ? `${s.variant_label} · ` : ''}{durL(s)}{price(s)}</small>
+                            </span>
+                            <i className="radio" aria-hidden="true">{pick?.id === s.id ? '✓' : ''}</i>
+                          </button>
+                        );
+                      }
+                      const on = card.items.find((s) => s.id === pick?.id);
+                      return (
+                        <div key={card.key} className={`svc-card multi${on ? ' on' : ''}`} role="group" aria-label={card.key}>
+                          <span className="svc-emo" aria-hidden="true">{emo}</span>
+                          <span className="svc-main">
+                            <b>{card.key}</b>
+                            <small>{on ? `${on.variant_label} · ${durL(on)}${price(on)}` : 'Elige una opción'}</small>
+                            <span className="vchips">
+                              {card.items.map((s) => (
+                                <button key={s.id} role="radio" aria-checked={pick?.id === s.id} className={'vchip' + (pick?.id === s.id ? ' on' : '')} onClick={() => { setPick(s); setError(''); }}>
+                                  {s.variant_label}<small>{durL(s)}</small>
+                                </button>
+                              ))}
+                            </span>
+                          </span>
+                          <i className="radio" aria-hidden="true">{on ? '✓' : ''}</i>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
             ))}
           </div>
           {error && <p className="error">{error}</p>}
@@ -234,11 +286,11 @@ export default function Booking({ showPrices = false, categories, review = true,
           <div className="party">
             {party.map((x, i) => (
               <div className="pline" key={i}>
-                <span><b>{x.guest || 'Tú'}</b> · {x.svc.name} · {dur(x.svc.duration_min)}</span>
+                <span><b>{x.guest || 'Tú'}</b> · {x.svc.name} · {durL(x.svc)}</span>
                 {i > 0 && <button className="x" onClick={() => removeGuest(i)} aria-label={`Quitar a ${x.guest}`}>×</button>}
               </div>
             ))}
-            {party.length > 1 && <div className="note">Se atienden una tras otra · {dur(totalMin)} en total</div>}
+            {party.length > 1 && <div className="note">Se atienden una tras otra · {party.some((x) => x.svc.approx) ? 'aprox. ' : ''}{dur(totalMin)} en total</div>}
             {party.length < MAX_PEOPLE && (
               <button className="lnk" onClick={() => { setAdding(true); setCat('all'); setPick(null); setStep(1); }}>＋ Agregar otra persona</button>
             )}
@@ -311,7 +363,7 @@ export default function Booking({ showPrices = false, categories, review = true,
               <span className="ico">📅</span>
               <div>
                 <b>{cap1(longDay(date))}</b>
-                <small>{slot.time} · {dur(totalMin)}</small>
+                <small>{slot.time} · {party.some((x) => x.svc.approx) ? 'aprox. ' : ''}{dur(totalMin)}</small>
               </div>
             </div>
             {plan.map((x, i) => (
