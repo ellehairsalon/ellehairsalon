@@ -80,10 +80,10 @@ export default function Manage({ token }) {
   const a = d.appt;
 
   if (a.status === 'cancelled') return (
-    <section><h2>Cita cancelada</h2><p>Tu cita fue cancelada. <a href="/">Agendar una nueva</a></p></section>
+    <section><h2>Cita cancelada</h2><p>Tu cita fue cancelada. <a href="/agendar">Agendar una nueva</a></p></section>
   );
   if (!['confirmed', 'pending'].includes(a.status)) return (
-    <section><h2>Esta cita ya finalizó</h2><p><a href="/">Agendar una nueva</a></p></section>
+    <section><h2>Esta cita ya finalizó</h2><p><a href="/agendar">Agendar una nueva</a></p></section>
   );
 
   const hmx = (iso) => new Date(iso).toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Guayaquil' });

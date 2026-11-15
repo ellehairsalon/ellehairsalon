@@ -1,3 +1,7 @@
 export default function sitemap() {
-  return [{ url: process.env.SITE_URL || 'https://ellehairsalon.vercel.app', changeFrequency: 'weekly', priority: 1 }];
+  const site = process.env.SITE_URL || 'https://ellehairsalon.vercel.app';
+  return [
+    { url: site, changeFrequency: 'monthly', priority: 1 },
+    { url: `${site}/agendar`, changeFrequency: 'weekly', priority: 0.9 },
+  ];
 }

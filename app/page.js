@@ -1,43 +1,188 @@
 import { db } from '@/lib/slots';
-import Booking from './Booking';
-import { DEFAULT_BONUS } from '@/lib/priority';
+import { sections } from '@/lib/menu';
+import { WHATSAPP, SALON } from '@/lib/config';
+import './home.css';
 
 export const dynamic = 'force-dynamic';
 
-const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const DAYS_EN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const DAYS_ES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+const ORDER = [1, 2, 3, 4, 5, 6, 0]; // la semana empieza en lunes
 
-// Datos del negocio para Google (Maps y búsquedas). Dirección y teléfono se ponen en Vercel (SALON_ADDRESS, SALON_CITY, SALON_PHONE); si no están, no se publican.
-async function businessJson() {
-  const { data: hrs } = await db.from('business_hours').select('*');
+const dur = (m) => (m >= 60 ? `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ''}` : `${m} min`);
+const durL = (s) => `${s.approx ? 'aprox. ' : ''}${dur(s.duration_min)}`;
+
+// Horario si la base de datos aún no lo tiene cargado.
+const FALLBACK_HOURS = [
+  { label: 'Lunes a viernes', text: '07:00 – 20:00' },
+  { label: 'Sábado y domingo', text: '08:00 – 20:00' },
+];
+
+// Junta los días seguidos con el mismo horario: "Lunes a viernes · 07:00 – 20:00".
+function groupHours(hrs) {
+  if (!Array.isArray(hrs) || !hrs.length) return FALLBACK_HOURS;
+  const rows = ORDER.map((wd) => {
+    const h = hrs.find((x) => x.weekday === wd);
+    return { wd, text: h?.is_open ? `${h.open_time.slice(0, 5)} – ${h.close_time.slice(0, 5)}` : 'Cerrado' };
+  });
+  const out = [];
+  rows.forEach((r) => {
+    const last = out[out.length - 1];
+    if (last && last.text === r.text) last.to = r.wd; else out.push({ from: r.wd, to: r.wd, text: r.text });
+  });
+  return out.map((g) => ({
+    label: g.from === g.to ? DAYS_ES[g.from] : `${DAYS_ES[g.from]} ${ORDER.indexOf(g.to) - ORDER.indexOf(g.from) === 1 ? 'y' : 'a'} ${DAYS_ES[g.to].toLowerCase()}`,
+    text: g.text,
+  }));
+}
+
+// Datos del negocio para Google (Maps y búsquedas).
+function businessJson(hrs) {
   const site = process.env.SITE_URL || 'https://ellehairsalon.vercel.app';
-  const j = { '@context': 'https://schema.org', '@type': 'HairSalon', name: 'Elle Hair Salon', url: site, image: `${site}/icon-512.png`, priceRange: '$$' };
-  if (process.env.SALON_PHONE) j.telephone = process.env.SALON_PHONE;
-  if (process.env.SALON_ADDRESS) j.address = { '@type': 'PostalAddress', streetAddress: process.env.SALON_ADDRESS, addressLocality: process.env.SALON_CITY || undefined, addressCountry: 'EC' };
+  const j = {
+    '@context': 'https://schema.org', '@type': 'HairSalon', name: 'Elle Hair Salon', url: site, image: `${site}/icon-512.png`, priceRange: '$$',
+    telephone: process.env.SALON_PHONE || `+${WHATSAPP}`,
+    address: { '@type': 'PostalAddress', streetAddress: process.env.SALON_ADDRESS || SALON.address, addressLocality: process.env.SALON_CITY || 'Pujilí', addressCountry: 'EC' },
+    sameAs: [`https://www.instagram.com/${SALON.instagram}/`],
+  };
   const open = (Array.isArray(hrs) ? hrs : []).filter((h) => h.is_open);
-  if (open.length) j.openingHoursSpecification = open.map((h) => ({ '@type': 'OpeningHoursSpecification', dayOfWeek: DAYS[h.weekday], opens: h.open_time.slice(0, 5), closes: h.close_time.slice(0, 5) }));
+  if (open.length) j.openingHoursSpecification = open.map((h) => ({ '@type': 'OpeningHoursSpecification', dayOfWeek: DAYS_EN[h.weekday], opens: h.open_time.slice(0, 5), closes: h.close_time.slice(0, 5) }));
   return j;
 }
 
-export default async function Page({ searchParams }) {
-  const sp = (await searchParams) || {};
-  const showPrices = sp.precios === '1';
-  const { data } = await db.from('service_categories')
-    .select('id,name,services(*)').order('sort_order');
-  const { data: cfg } = await db.from('salon_settings').select('approval_mode,online_lead_hours,reschedule_min_hours,early_fee_type,early_fee_value,early_bonus').eq('id', 1).single();
-  const categories = (data || [])
-    .map((c) => ({ ...c, services: c.services.filter((s) => s.is_active).sort((a, b) => a.sort_order - b.sort_order) }))
+export default async function Home() {
+  // Si la base de datos no responde, la página igual se muestra (sin el menú).
+  const [{ data: cats }, { data: hrs }] = await Promise.all([
+    db.from('service_categories').select('id,name,services(*)').order('sort_order').then((r) => r, () => ({ data: null })),
+    db.from('business_hours').select('*').then((r) => r, () => ({ data: null })),
+  ]);
+  const categories = (cats || [])
+    .map((c) => ({ ...c, services: (c.services || []).filter((s) => s.is_active).sort((a, b) => a.sort_order - b.sort_order) }))
     .filter((c) => c.services.length);
-  const ld = await businessJson().catch(() => null);
+  const hours = groupHours(hrs);
+  const ld = businessJson(hrs);
+  const wa = `https://wa.me/${WHATSAPP}`;
+  const ig = `https://www.instagram.com/${SALON.instagram}/`;
+
   return (
-    <main>
-      {ld && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld).replace(/</g, '\\u003c') }} />}
-      <header className="head">
-      <p className="eyebrow">Agenda tu cita</p>
-      <h1>Elle <em>Hair Salon</em></h1>
-      <p className="lead">{(cfg?.approval_mode || 'manual') !== 'auto' ? 'Elige tu servicio y un horario; el salón te confirma por WhatsApp.' : 'Elige tu servicio, un horario y listo.'}</p>
+    <div className="home">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld).replace(/</g, '\\u003c') }} />
+
+      <header className="hm-top">
+        <a href="/" className="hm-logo" aria-label="Elle Hair Salon, inicio"><em>Elle</em> Hair Salon</a>
+        <nav className="hm-nav" aria-label="Secciones">
+          <a href="#salon">El salón</a>
+          <a href="#servicios">Servicios</a>
+          <a href="#visitanos">Cómo llegar</a>
+        </nav>
+        <a href="/agendar" className="hm-btn sm">Agendar cita</a>
       </header>
-      <Booking showPrices={showPrices} categories={categories} review={(cfg?.approval_mode || 'manual') !== 'auto'} leadHours={cfg?.online_lead_hours ?? 10} policyHours={cfg?.reschedule_min_hours ?? 10}
-        priority={{ type: cfg?.early_fee_type || 'fixed', value: cfg?.early_fee_value ?? 5, bonus: cfg?.early_bonus || DEFAULT_BONUS }} />
-    </main>
+
+      <main>
+        <section className="hm-hero">
+          <h1 className="hm-mast"><em>Elle</em><span>Hair Salon</span></h1>
+          <div className="hm-hero-text">
+            <p className="hm-lead">Peluquería en Pujilí. Cortes, color, rizos, tratamientos y peinados, siempre con cita para que no tengas que esperar.</p>
+            <div className="hm-actions">
+              <a href="/agendar" className="hm-btn">Agendar cita</a>
+              <a href="#servicios" className="hm-link">Ver los servicios</a>
+            </div>
+          </div>
+          <div className="hm-hero-img">
+            <img src="/fotos/secador.jpg" alt="Secador con difusor en Elle Hair Salon" width="736" height="1300" />
+          </div>
+        </section>
+
+        <section className="hm-about" id="salon">
+          <div className="hm-about-imgs">
+            <img className="a" src="/fotos/espejos.jpg" alt="Interior de Elle Hair Salon: espejos ovalados, sillas y tocadores de madera" width="736" height="976" loading="lazy" />
+            <img className="b" src="/fotos/peines.jpg" alt="Peines, brocha y tijeras sobre el tocador del salón" width="736" height="408" loading="lazy" />
+          </div>
+          <div className="hm-about-text">
+            <h2>Un salón pequeño, para atenderte con calma.</h2>
+            {/* TEXTO A TU CRITERIO: cámbialo por la historia del salón cuando quieras. */}
+            <p>Elle es el salón de {SALON.owner}, en Pujilí. Aquí cada persona tiene su hora reservada: llegas, conversamos sobre lo que buscas y trabajamos sin apuro, con productos profesionales y cuidando cada detalle.</p>
+            <p>Atendemos a mujeres, hombres y niños.</p>
+            <a className="hm-rating" href={SALON.maps} target="_blank" rel="noopener noreferrer">
+              <b>{SALON.rating}</b>
+              <span>de 5 en Google, con {SALON.reviews} opiniones.<br /><u>Leer las opiniones</u></span>
+            </a>
+          </div>
+        </section>
+
+        {categories.length > 0 && (
+          <section className="hm-menu" id="servicios">
+            <div className="hm-menu-head">
+              <h2>Servicios</h2>
+              <p className="hm-note">El tiempo de cada servicio es aproximado: depende del largo y del estado de tu cabello.</p>
+              {categories.length > 2 && (
+                <nav className="hm-jump" aria-label="Categorías de servicios">
+                  {categories.map((c) => <a key={c.id} href={`#cat-${c.id}`}>{c.name}</a>)}
+                </nav>
+              )}
+            </div>
+            <div className="hm-cats">
+              {categories.map((c) => (
+                <div className="hm-cat" key={c.id} id={`cat-${c.id}`}>
+                  <h3>{c.name}</h3>
+                  {sections(c.services).map((sec) => (
+                    <div className="hm-sec" key={sec.sub || 'x'}>
+                      {sec.sub && <p className="hm-sub">{sec.sub}</p>}
+                      <ul>
+                        {sec.cards.map((card) => (card.items.length === 1 ? (
+                          <li key={card.key} className="ln">
+                            <span>{card.items[0].group_name || card.items[0].name}{card.items[0].variant_label ? <small>{card.items[0].variant_label}</small> : null}</span>
+                            <i aria-hidden="true" />
+                            <b>{durL(card.items[0])}</b>
+                          </li>
+                        ) : (
+                          <li key={card.key} className="multi">
+                            <span>{card.key}</span>
+                            <ul>
+                              {card.items.map((s) => (
+                                <li key={s.id} className="ln"><span>{s.variant_label || s.name}</span><i aria-hidden="true" /><b>{durL(s)}</b></li>
+                              ))}
+                            </ul>
+                          </li>
+                        )))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+            <div className="hm-menu-cta">
+              <a href="/agendar" className="hm-btn">Agendar cita</a>
+              <a href={wa} className="hm-link" target="_blank" rel="noopener noreferrer">Preguntar por WhatsApp</a>
+            </div>
+          </section>
+        )}
+
+        <section className="hm-visit" id="visitanos">
+          <div className="hm-visit-img">
+            <img src="/fotos/plancha.jpg" alt="Plancha de cabello en el salón" width="736" height="1300" loading="lazy" />
+          </div>
+          <div className="hm-visit-text">
+            <h2>{SALON.address}, {SALON.city.split(',')[0]}.</h2>
+            <a className="hm-link" href={SALON.maps} target="_blank" rel="noopener noreferrer">Cómo llegar con Google Maps</a>
+            <dl className="hm-hours">
+              {hours.map((h) => (<div key={h.label}><dt>{h.label}</dt><dd>{h.text}</dd></div>))}
+            </dl>
+            <ul className="hm-contact">
+              <li><span>WhatsApp</span><a href={wa} target="_blank" rel="noopener noreferrer">{SALON.phone}</a></li>
+              <li><span>Instagram</span><a href={ig} target="_blank" rel="noopener noreferrer">@{SALON.instagram}</a></li>
+            </ul>
+            <a href="/agendar" className="hm-btn light">Agendar cita</a>
+          </div>
+        </section>
+      </main>
+
+      <footer className="hm-foot">
+        <span><em>Elle</em> Hair Salon, {SALON.city}</span>
+        <a href={ig} target="_blank" rel="noopener noreferrer">Instagram</a>
+        <a href={wa} target="_blank" rel="noopener noreferrer">WhatsApp</a>
+        <a href="/agendar">Agendar cita</a>
+      </footer>
+    </div>
   );
 }
