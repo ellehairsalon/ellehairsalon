@@ -32,6 +32,7 @@ export default function Booking({ showPrices = false, categories, review = true,
   const [step, setStep] = useState(1);
   const feeShown = (amt) => (showPrices ? `+${money(amt)}` : priority.type === 'percent' ? `+${+priority.value}%` : 'Recargo');
   const [cat, setCat] = useState('all');
+  const [sheet, setSheet] = useState(null); // tarjeta con varios largos de cabello (ventana)
   const [pick, setPick] = useState(null); // servicio elegido en el paso 1 (uno solo)
   const [party, setParty] = useState([]); // [{ svc, guest }]: la primera persona es quien reserva
   const [adding, setAdding] = useState(false); // eligiendo el servicio de otra persona
@@ -77,6 +78,14 @@ export default function Booking({ showPrices = false, categories, review = true,
       .catch(() => live && setDays([]));
     return () => { live = false; };
   }, [partyKey, week]);
+
+  useEffect(() => {
+    if (!sheet) return;
+    const k = (e) => e.key === 'Escape' && setSheet(null);
+    document.addEventListener('keydown', k);
+    const o = document.body.style.overflow; document.body.style.overflow = 'hidden';
+    return () => { document.removeEventListener('keydown', k); document.body.style.overflow = o; };
+  }, [sheet]);
 
   function pickService(s) {
     if (adding) {
@@ -237,23 +246,16 @@ export default function Booking({ showPrices = false, categories, review = true,
                           </button>
                         );
                       }
-                      const on = card.items.find((s) => s.id === pick?.id);
+                      const lo = Math.min(...card.items.map((s) => s.duration_min));
                       return (
-                        <div key={card.key} className={`svc-card multi${on ? ' on' : ''}`} role="group" aria-label={card.key}>
+                        <button key={card.key} className="svc-card multi" aria-haspopup="dialog" onClick={() => { setSheet(card); setError(''); }}>
                           <span className="svc-emo" aria-hidden="true">{emo}</span>
                           <span className="svc-main">
                             <b>{card.key}</b>
-                            {on && <small>{`${on.variant_label} · ${durL(on)}${price(on)}`}</small>}
-                            <span className="vchips">
-                              {card.items.map((s) => (
-                                <button key={s.id} role="radio" aria-checked={pick?.id === s.id} className={'vchip' + (pick?.id === s.id ? ' on' : '')} onClick={() => { setPick(s); setError(''); }}>
-                                  {s.variant_label}<small>{durL(s)}</small>
-                                </button>
-                              ))}
-                            </span>
+                            <small>Elige el largo de tu cabello · desde {dur(lo)}</small>
                           </span>
-                          <i className="radio" aria-hidden="true">{on ? '✓' : ''}</i>
-                        </div>
+                          <i className="radio chev" aria-hidden="true">›</i>
+                        </button>
                       );
                     })}
                   </div>
@@ -261,6 +263,27 @@ export default function Booking({ showPrices = false, categories, review = true,
               </div>
             ))}
           </div>
+          {sheet && (
+            <div className="lsheet-bg" onClick={() => setSheet(null)}>
+              <div className="lsheet" role="dialog" aria-modal="true" aria-labelledby="lsheet-t" onClick={(e) => e.stopPropagation()}>
+                <h3 id="lsheet-t">¿Qué largo tiene tu cabello?</h3>
+                <p className="lsheet-sub">{sheet.key}</p>
+                <div className="lsheet-opts">
+                  {sheet.items.map((s, i) => {
+                    const k = (s.variant_label || '').toLowerCase();
+                    const hint = k.includes('corto') ? 'Hasta la barbilla' : k.includes('medio') && k.includes('largo') ? 'Desde los hombros hacia abajo' : k.includes('medio') ? 'Hasta los hombros' : k.includes('largo') ? 'Por debajo de los hombros' : '';
+                    return (
+                      <button key={s.id} autoFocus={i === 0} className="lsheet-opt" onClick={() => { setSheet(null); setPick(s); pickService(s); }}>
+                        <span><b>{s.variant_label}</b>{hint && <small>{hint}</small>}</span>
+                        <em>{durL(s)}{showPrices && priceLabel(s.price, s.price_from) ? ` · ${s.price_from ? 'desde ' : ''}${money(s.price)}` : ''}</em>
+                      </button>
+                    );
+                  })}
+                </div>
+                <button className="lnk lsheet-x" onClick={() => setSheet(null)}>Cancelar</button>
+              </div>
+            </div>
+          )}
           {error && <p className="error">{error}</p>}
           {pick && (
             <div className="svc-cta"><button className="cta" onClick={() => pickService(pick)}>
